@@ -7,33 +7,34 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('ecommerce')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+  constructor(private readonly categoryService: CategoryService) { }
 
   @Post()
-  @RequiresPermission('can_create_category')
+  @RequiresPermission(Permissions.CREATE_CATEGORY)
   create(@CurrentTenant() tenantId: string, @Body() createCategoryDto: any) {
     return this.categoryService.create(tenantId, createCategoryDto);
   }
 
   @Get()
-  @RequiresPermission('can_read_category')
+  @RequiresPermission(Permissions.READ_CATEGORY)
   findAll(@CurrentTenant() tenantId: string) {
     return this.categoryService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_read_category')
+  @RequiresPermission(Permissions.READ_CATEGORY)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.categoryService.findOne(tenantId, id);
   }
 
   @Put(':id')
-  @RequiresPermission('can_update_category')
+  @RequiresPermission(Permissions.UPDATE_CATEGORY)
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
@@ -43,7 +44,7 @@ export class CategoryController {
   }
 
   @Delete(':id')
-  @RequiresPermission('can_delete_category')
+  @RequiresPermission(Permissions.DELETE_CATEGORY)
   remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.categoryService.remove(tenantId, id);
   }

@@ -2,10 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import { HashUtils } from '../../common/utils/hash.utils';
 import { UserRole } from './entities/user-role.entity';
 import { UserPermission } from './entities/user-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -18,15 +19,14 @@ export class UserService {
     private userPermissionRepository: Repository<UserPermission>,
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
-  ) {}
+  ) { }
 
-  async create(createUserDto: any): Promise<User> {
+  async create(createUserDto: CreateUserDto): Promise<User> {
     const user = this.userRepository.create(createUserDto as unknown as User);
 
     // Hash password if present
     if (user.password) {
-      const salt = await bcrypt.genSalt();
-      user.password = await bcrypt.hash(user.password, salt);
+      user.password = await HashUtils.hash(user.password);
     }
 
     return this.userRepository.save(user);
@@ -34,8 +34,8 @@ export class UserService {
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
-        where: { id },
-        relations: ['roles', 'roles.role', 'permissions', 'permissions.permission']
+      where: { id },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission']
     });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
@@ -52,50 +52,50 @@ export class UserService {
   }
 
   async addRole(userId: string, roleId: string): Promise<void> {
-      const existing = await this.userRoleRepository.findOne({ where: { userId, roleId } });
-      if (!existing) {
-          const userRole = this.userRoleRepository.create({ userId, roleId } as UserRole);
-          await this.userRoleRepository.save(userRole);
-      }
+    const existing = await this.userRoleRepository.findOne({ where: { userId, roleId } });
+    if (!existing) {
+      const userRole = this.userRoleRepository.create({ userId, roleId } as UserRole);
+      await this.userRoleRepository.save(userRole);
+    }
   }
 
   async removeRole(userId: string, roleId: string): Promise<void> {
-      await this.userRoleRepository.delete({ userId, roleId });
+    await this.userRoleRepository.delete({ userId, roleId });
   }
 
   async grantPermission(userId: string, permissionName: string): Promise<void> {
-      const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
-      if (!permission) return;
+    const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
+    if (!permission) return;
 
-      const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
-      if (existing) {
-          existing.granted = true;
-          await this.userPermissionRepository.save(existing);
-      } else {
-          const userPerm = this.userPermissionRepository.create({
-              userId,
-              permissionId: permission.id,
-              granted: true
-          } as UserPermission);
-          await this.userPermissionRepository.save(userPerm);
-      }
+    const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
+    if (existing) {
+      existing.granted = true;
+      await this.userPermissionRepository.save(existing);
+    } else {
+      const userPerm = this.userPermissionRepository.create({
+        userId,
+        permissionId: permission.id,
+        granted: true
+      } as UserPermission);
+      await this.userPermissionRepository.save(userPerm);
+    }
   }
 
   async revokePermission(userId: string, permissionName: string): Promise<void> {
-      const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
-      if (!permission) return;
+    const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
+    if (!permission) return;
 
-      const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
-      if (existing) {
-          existing.granted = false;
-          await this.userPermissionRepository.save(existing);
-      } else {
-          const userPerm = this.userPermissionRepository.create({
-              userId,
-              permissionId: permission.id,
-              granted: false
-          } as UserPermission);
-          await this.userPermissionRepository.save(userPerm);
-      }
+    const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
+    if (existing) {
+      existing.granted = false;
+      await this.userPermissionRepository.save(existing);
+    } else {
+      const userPerm = this.userPermissionRepository.create({
+        userId,
+        permissionId: permission.id,
+        granted: false
+      } as UserPermission);
+      await this.userPermissionRepository.save(userPerm);
+    }
   }
 }

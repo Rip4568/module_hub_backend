@@ -7,33 +7,34 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('roles')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('team_permissions')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) {}
+  constructor(private readonly roleService: RoleService) { }
 
   @Post()
-  @RequiresPermission('can_manage_roles')
+  @RequiresPermission(Permissions.MANAGE_ROLES)
   create(@CurrentTenant() tenantId: string, @Body() createRoleDto: any) {
     return this.roleService.create(tenantId, createRoleDto);
   }
 
   @Get()
-  @RequiresPermission('can_manage_roles')
+  @RequiresPermission(Permissions.MANAGE_ROLES)
   findAll(@CurrentTenant() tenantId: string) {
     return this.roleService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_manage_roles')
+  @RequiresPermission(Permissions.MANAGE_ROLES)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.roleService.findOne(tenantId, id);
   }
 
   @Put(':id')
-  @RequiresPermission('can_manage_roles')
+  @RequiresPermission(Permissions.MANAGE_ROLES)
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
@@ -43,20 +44,20 @@ export class RoleController {
   }
 
   @Delete(':id')
-  @RequiresPermission('can_manage_roles')
+  @RequiresPermission(Permissions.MANAGE_ROLES)
   remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.roleService.remove(tenantId, id);
   }
 
   @Post(':id/permissions')
-  @RequiresPermission('can_manage_permissions')
+  @RequiresPermission(Permissions.MANAGE_PERMISSIONS)
   addPermissions(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { permissions: string[] }) {
-      return this.roleService.addPermissions(tenantId, id, body.permissions);
+    return this.roleService.addPermissions(tenantId, id, body.permissions);
   }
 
   @Delete(':id/permissions')
-  @RequiresPermission('can_manage_permissions')
+  @RequiresPermission(Permissions.MANAGE_PERMISSIONS)
   removePermissions(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { permissions: string[] }) {
-      return this.roleService.removePermissions(tenantId, id, body.permissions);
+    return this.roleService.removePermissions(tenantId, id, body.permissions);
   }
 }

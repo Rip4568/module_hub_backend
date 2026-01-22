@@ -7,33 +7,34 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('drivers')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('drivers_management')
 export class DriverController {
-  constructor(private readonly driverService: DriverService) {}
+  constructor(private readonly driverService: DriverService) { }
 
   @Post()
-  @RequiresPermission('can_create_driver')
+  @RequiresPermission(Permissions.CREATE_DRIVER)
   create(@CurrentTenant() tenantId: string, @Body() createDriverDto: any) {
     return this.driverService.create(tenantId, createDriverDto);
   }
 
   @Get()
-  @RequiresPermission('can_read_driver')
+  @RequiresPermission(Permissions.READ_DRIVER)
   findAll(@CurrentTenant() tenantId: string) {
     return this.driverService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_read_driver')
+  @RequiresPermission(Permissions.READ_DRIVER)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.driverService.findOne(tenantId, id);
   }
 
   @Put(':id')
-  @RequiresPermission('can_update_driver')
+  @RequiresPermission(Permissions.UPDATE_DRIVER)
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
@@ -43,20 +44,20 @@ export class DriverController {
   }
 
   @Delete(':id')
-  @RequiresPermission('can_delete_driver')
+  @RequiresPermission(Permissions.DELETE_DRIVER)
   remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.driverService.remove(tenantId, id);
   }
 
   @Post(':id/approve')
-  @RequiresPermission('can_approve_driver')
+  @RequiresPermission(Permissions.APPROVE_DRIVER)
   approve(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.driverService.approve(tenantId, id);
+    return this.driverService.approve(tenantId, id);
   }
 
   @Post(':id/block')
-  @RequiresPermission('can_block_driver')
+  @RequiresPermission(Permissions.BLOCK_DRIVER)
   block(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.driverService.block(tenantId, id);
+    return this.driverService.block(tenantId, id);
   }
 }

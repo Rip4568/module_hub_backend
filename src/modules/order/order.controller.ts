@@ -8,33 +8,34 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('order_management')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) {}
+  constructor(private readonly orderService: OrderService) { }
 
   @Post()
-  @RequiresPermission('can_create_order')
+  @RequiresPermission(Permissions.CREATE_ORDER)
   create(@CurrentTenant() tenantId: string, @Request() req: any, @Body() createOrderDto: any) {
     return this.orderService.create(tenantId, req.user.userId, createOrderDto);
   }
 
   @Get()
-  @RequiresPermission('can_read_order')
+  @RequiresPermission(Permissions.READ_ORDER)
   findAll(@CurrentTenant() tenantId: string) {
     return this.orderService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_read_order')
+  @RequiresPermission(Permissions.READ_ORDER)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.orderService.findOne(tenantId, id);
   }
 
   @Put(':id')
-  @RequiresPermission('can_update_order')
+  @RequiresPermission(Permissions.UPDATE_ORDER)
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
@@ -44,26 +45,26 @@ export class OrderController {
   }
 
   @Post(':id/cancel')
-  @RequiresPermission('can_cancel_order')
+  @RequiresPermission(Permissions.CANCEL_ORDER)
   cancel(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body('reason') reason: string) {
-      return this.orderService.cancel(tenantId, id, reason);
+    return this.orderService.cancel(tenantId, id, reason);
   }
 
   @Post(':id/approve')
-  @RequiresPermission('can_approve_order')
+  @RequiresPermission(Permissions.APPROVE_ORDER)
   approve(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.orderService.approve(tenantId, id);
+    return this.orderService.approve(tenantId, id);
   }
 
   @Post(':id/assign/:driverId')
-  @RequiresPermission('can_assign_driver')
+  @RequiresPermission(Permissions.ASSIGN_DRIVER)
   assignDriver(@CurrentTenant() tenantId: string, @Param('id') id: string, @Param('driverId') driverId: string) {
-      return this.orderService.assignDriver(tenantId, id, driverId);
+    return this.orderService.assignDriver(tenantId, id, driverId);
   }
 
   @Post(':id/complete')
-  @RequiresPermission('can_complete_order')
+  @RequiresPermission(Permissions.COMPLETE_ORDER)
   complete(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.orderService.complete(tenantId, id);
+    return this.orderService.complete(tenantId, id);
   }
 }

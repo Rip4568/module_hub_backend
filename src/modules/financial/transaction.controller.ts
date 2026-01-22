@@ -7,40 +7,41 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')
 export class TransactionController {
-  constructor(private readonly transactionService: TransactionService) {}
+  constructor(private readonly transactionService: TransactionService) { }
 
   @Post()
-  @RequiresPermission('can_create_payment')
+  @RequiresPermission(Permissions.CREATE_PAYMENT)
   create(@CurrentTenant() tenantId: string, @Body() createTransactionDto: any) {
     return this.transactionService.create(tenantId, createTransactionDto);
   }
 
   @Get()
-  @RequiresPermission('can_read_financial')
+  @RequiresPermission(Permissions.READ_FINANCIAL)
   findAll(@CurrentTenant() tenantId: string) {
     return this.transactionService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_read_financial')
+  @RequiresPermission(Permissions.READ_FINANCIAL)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.transactionService.findOne(tenantId, id);
   }
 
   @Post(':id/approve')
-  @RequiresPermission('can_approve_payment')
+  @RequiresPermission(Permissions.APPROVE_PAYMENT)
   approve(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.transactionService.approve(tenantId, id);
+    return this.transactionService.approve(tenantId, id);
   }
 
   @Post(':id/cancel')
-  @RequiresPermission('can_cancel_payment')
+  @RequiresPermission(Permissions.CANCEL_PAYMENT)
   cancel(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.transactionService.cancel(tenantId, id);
+    return this.transactionService.cancel(tenantId, id);
   }
 }

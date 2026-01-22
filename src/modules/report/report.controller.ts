@@ -7,19 +7,20 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('advanced_reports')
 export class ReportController {
-  constructor(private readonly reportService: ReportService) {}
+  constructor(private readonly reportService: ReportService) { }
 
   @Get('sales')
-  @RequiresPermission('can_read_report')
+  @RequiresPermission(Permissions.READ_REPORT)
   async getSalesReport(
-      @CurrentTenant() tenantId: string,
-      @Query('startDate') startDate: string,
-      @Query('endDate') endDate: string
+    @CurrentTenant() tenantId: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;

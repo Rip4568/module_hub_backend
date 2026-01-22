@@ -7,33 +7,34 @@ import { ModuleGuard } from '../../common/guards/module.guard';
 import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
+import { Permissions } from '../../common/constants/permissions';
 
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('fleet_management')
 export class VehicleController {
-  constructor(private readonly vehicleService: VehicleService) {}
+  constructor(private readonly vehicleService: VehicleService) { }
 
   @Post()
-  @RequiresPermission('can_create_vehicle')
+  @RequiresPermission(Permissions.CREATE_VEHICLE)
   create(@CurrentTenant() tenantId: string, @Body() createVehicleDto: any) {
     return this.vehicleService.create(tenantId, createVehicleDto);
   }
 
   @Get()
-  @RequiresPermission('can_read_vehicle')
+  @RequiresPermission(Permissions.READ_VEHICLE)
   findAll(@CurrentTenant() tenantId: string) {
     return this.vehicleService.findAll(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('can_read_vehicle')
+  @RequiresPermission(Permissions.READ_VEHICLE)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.vehicleService.findOne(tenantId, id);
   }
 
   @Put(':id')
-  @RequiresPermission('can_update_vehicle')
+  @RequiresPermission(Permissions.UPDATE_VEHICLE)
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
@@ -43,20 +44,20 @@ export class VehicleController {
   }
 
   @Delete(':id')
-  @RequiresPermission('can_delete_vehicle')
+  @RequiresPermission(Permissions.DELETE_VEHICLE)
   remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.vehicleService.remove(tenantId, id);
   }
 
   @Post(':id/approve')
-  @RequiresPermission('can_approve_vehicle')
+  @RequiresPermission(Permissions.APPROVE_VEHICLE)
   approve(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.vehicleService.approve(tenantId, id);
+    return this.vehicleService.approve(tenantId, id);
   }
 
   @Post(':id/maintenance')
-  @RequiresPermission('can_set_maintenance')
+  @RequiresPermission(Permissions.SET_MAINTENANCE)
   setMaintenance(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-      return this.vehicleService.setMaintenance(tenantId, id);
+    return this.vehicleService.setMaintenance(tenantId, id);
   }
 }
