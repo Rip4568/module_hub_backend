@@ -8,7 +8,7 @@ export class TenantService {
   constructor(
     @InjectRepository(Tenant)
     private tenantRepository: Repository<Tenant>,
-  ) {}
+  ) { }
 
   async create(createTenantDto: any): Promise<Tenant> {
     const tenant = this.tenantRepository.create(createTenantDto as unknown as Tenant);
@@ -27,8 +27,7 @@ export class TenantService {
     return tenant;
   }
 
-  async findBySlug(slug: string): Promise<Tenant> {
-    const tenant = await this.tenantRepository.findOne({ where: { slug } });
-    return tenant;
+  async findBySlug(slug: string): Promise<Tenant | null> {
+    return this.tenantRepository.findOne({ where: { slug } });
   }
 }

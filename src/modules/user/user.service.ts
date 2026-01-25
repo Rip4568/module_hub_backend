@@ -43,11 +43,11 @@ export class UserService {
     return user;
   }
 
-  async findByEmail(email: string): Promise<User> {
+  async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
   }
 
-  async findByEmailAndTenant(email: string, tenantId: string): Promise<User> {
+  async findByEmailAndTenant(email: string, tenantId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email, tenantId } });
   }
 

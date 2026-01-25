@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Organization, OrganizationStatus } from './entities/organization.entity';
 import { Address } from './entities/address.entity';
+import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/create-organization.dto';
 
 @Injectable()
 export class OrganizationService {
@@ -11,14 +12,15 @@ export class OrganizationService {
     private organizationRepository: Repository<Organization>,
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
-  ) {}
+  ) { }
 
-  async create(tenantId: string, createOrganizationDto: any): Promise<Organization> {
+  async create(tenantId: string, createOrganizationDto: CreateOrganizationDto): Promise<Organization> {
     const organization = this.organizationRepository.create({
-      ...createOrganizationDto,
+      ...(createOrganizationDto as any),
       tenantId,
-    } as Organization);
-    return this.organizationRepository.save(organization);
+    });
+    const saved = await this.organizationRepository.save(organization);
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async findAll(tenantId: string): Promise<Organization[]> {
@@ -38,10 +40,11 @@ export class OrganizationService {
     return organization;
   }
 
-  async update(tenantId: string, id: string, updateOrganizationDto: any): Promise<Organization> {
+  async update(tenantId: string, id: string, updateOrganizationDto: UpdateOrganizationDto): Promise<Organization> {
     const organization = await this.findOne(tenantId, id);
     this.organizationRepository.merge(organization, updateOrganizationDto);
-    return this.organizationRepository.save(organization);
+    const saved = await this.organizationRepository.save(organization);
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
@@ -50,15 +53,15 @@ export class OrganizationService {
   }
 
   async approve(tenantId: string, id: string): Promise<Organization> {
-      const organization = await this.findOne(tenantId, id);
-      organization.status = OrganizationStatus.ACTIVE;
-      organization.approvedAt = new Date();
-      return this.organizationRepository.save(organization);
+    const organization = await this.findOne(tenantId, id);
+    organization.status = OrganizationStatus.ACTIVE;
+    organization.approvedAt = new Date();
+    return this.organizationRepository.save(organization);
   }
 
   async block(tenantId: string, id: string): Promise<Organization> {
-      const organization = await this.findOne(tenantId, id);
-      organization.status = OrganizationStatus.BLOCKED;
-      return this.organizationRepository.save(organization);
+    const organization = await this.findOne(tenantId, id);
+    organization.status = OrganizationStatus.BLOCKED;
+    return this.organizationRepository.save(organization);
   }
 }

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Product, ProductStatus } from './entities/product.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 import { ProductCategory } from './entities/product-category.entity';
+import { CreateProductDto, UpdateProductDto } from './dto/create-product.dto';
 
 @Injectable()
 export class ProductService {
@@ -14,9 +15,9 @@ export class ProductService {
     private variantRepository: Repository<ProductVariant>,
     @InjectRepository(ProductCategory)
     private productCategoryRepository: Repository<ProductCategory>,
-  ) {}
+  ) { }
 
-  async create(tenantId: string, createProductDto: any): Promise<Product> {
+  async create(tenantId: string, createProductDto: CreateProductDto): Promise<Product> {
     const { categories, variants, ...productData } = createProductDto;
 
     const product = this.productRepository.create({
@@ -26,17 +27,17 @@ export class ProductService {
     const savedProduct = await this.productRepository.save(product);
 
     if (categories && categories.length > 0) {
-        const productCategories = categories.map(catId =>
-            this.productCategoryRepository.create({ productId: savedProduct.id, categoryId: catId } as ProductCategory)
-        );
-        await this.productCategoryRepository.save(productCategories);
+      const productCategories = categories.map(catId =>
+        this.productCategoryRepository.create({ productId: savedProduct.id, categoryId: catId } as ProductCategory)
+      );
+      await this.productCategoryRepository.save(productCategories);
     }
 
     if (variants && variants.length > 0) {
-        const productVariants = variants.map(variant =>
-            this.variantRepository.create({ ...variant, productId: savedProduct.id } as ProductVariant)
-        );
-        await this.variantRepository.save(productVariants);
+      const productVariants = variants.map(variant =>
+        this.variantRepository.create({ ...variant, productId: savedProduct.id } as ProductVariant)
+      );
+      await this.variantRepository.save(productVariants);
     }
 
     return this.findOne(tenantId, savedProduct.id);
@@ -45,12 +46,12 @@ export class ProductService {
   async findAll(tenantId: string, query: any = {}): Promise<Product[]> {
     // Basic query support
     const qb = this.productRepository.createQueryBuilder('product')
-        .leftJoinAndSelect('product.categories', 'pc')
-        .leftJoinAndSelect('pc.category', 'category')
-        .where('product.tenantId = :tenantId', { tenantId });
+      .leftJoinAndSelect('product.categories', 'pc')
+      .leftJoinAndSelect('pc.category', 'category')
+      .where('product.tenantId = :tenantId', { tenantId });
 
     if (query.status) {
-        qb.andWhere('product.status = :status', { status: query.status });
+      qb.andWhere('product.status = :status', { status: query.status });
     }
 
     return qb.getMany();
@@ -69,7 +70,7 @@ export class ProductService {
     return product;
   }
 
-  async update(tenantId: string, id: string, updateProductDto: any): Promise<Product> {
+  async update(tenantId: string, id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const product = await this.findOne(tenantId, id);
     const { categories, variants, ...productData } = updateProductDto;
 
@@ -79,11 +80,11 @@ export class ProductService {
     // Simple update logic for relations: Remove all and re-add (for MVP simplicity)
     // In production, sync logic is better.
     if (categories) {
-        await this.productCategoryRepository.delete({ productId: id });
-        const productCategories = categories.map(catId =>
-            this.productCategoryRepository.create({ productId: id, categoryId: catId } as ProductCategory)
-        );
-        await this.productCategoryRepository.save(productCategories);
+      await this.productCategoryRepository.delete({ productId: id });
+      const productCategories = categories.map(catId =>
+        this.productCategoryRepository.create({ productId: id, categoryId: catId } as ProductCategory)
+      );
+      await this.productCategoryRepository.save(productCategories);
     }
 
     // Variant update logic is complex (update existing, add new, remove old).
@@ -101,9 +102,9 @@ export class ProductService {
   }
 
   async publish(tenantId: string, id: string): Promise<Product> {
-      const product = await this.findOne(tenantId, id);
-      product.status = ProductStatus.ACTIVE;
-      product.publishedAt = new Date();
-      return this.productRepository.save(product);
+    const product = await this.findOne(tenantId, id);
+    product.status = ProductStatus.ACTIVE;
+    product.publishedAt = new Date();
+    return this.productRepository.save(product);
   }
 }

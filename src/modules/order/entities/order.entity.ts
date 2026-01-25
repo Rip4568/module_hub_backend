@@ -7,6 +7,7 @@ import { User } from '../../user/entities/user.entity';
 import { OrderItem } from './order-item.entity';
 import { Delivery } from '../../delivery/entities/delivery.entity';
 import { Transaction } from '../../financial/entities/transaction.entity';
+import { Address } from '../../../common/interfaces/address.interface';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -53,7 +54,7 @@ export class Order {
   customerDocument: string;
 
   @Column({ type: 'json' })
-  shippingAddress: any;
+  shippingAddress: Address;
 
   @Column({ nullable: true })
   organizationId: string;
