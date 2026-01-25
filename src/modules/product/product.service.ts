@@ -17,12 +17,11 @@ export class ProductService {
     private productCategoryRepository: Repository<ProductCategory>,
   ) { }
 
-  async create(tenantId: string, createProductDto: CreateProductDto): Promise<Product> {
+  async create(createProductDto: CreateProductDto): Promise<Product> {
     const { categories, variants, ...productData } = createProductDto;
 
     const product = this.productRepository.create({
       ...productData,
-      tenantId,
     } as Product);
     const savedProduct = await this.productRepository.save(product);
 
@@ -40,15 +39,14 @@ export class ProductService {
       await this.variantRepository.save(productVariants);
     }
 
-    return this.findOne(tenantId, savedProduct.id);
+    return this.findOne(savedProduct.id);
   }
 
-  async findAll(tenantId: string, query: any = {}): Promise<Product[]> {
+  async findAll(query: any = {}): Promise<Product[]> {
     // Basic query support
     const qb = this.productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.categories', 'pc')
-      .leftJoinAndSelect('pc.category', 'category')
-      .where('product.tenantId = :tenantId', { tenantId });
+      .leftJoinAndSelect('pc.category', 'category');
 
     if (query.status) {
       qb.andWhere('product.status = :status', { status: query.status });
@@ -57,9 +55,9 @@ export class ProductService {
     return qb.getMany();
   }
 
-  async findOne(tenantId: string, id: string): Promise<Product> {
+  async findOne(id: string): Promise<Product> {
     const product = await this.productRepository.findOne({
-      where: { id, tenantId },
+      where: { id } as any,
       relations: ['categories', 'categories.category', 'variants'],
     });
 
@@ -70,15 +68,13 @@ export class ProductService {
     return product;
   }
 
-  async update(tenantId: string, id: string, updateProductDto: UpdateProductDto): Promise<Product> {
-    const product = await this.findOne(tenantId, id);
+  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
+    const product = await this.findOne(id);
     const { categories, variants, ...productData } = updateProductDto;
 
     this.productRepository.merge(product, productData);
     await this.productRepository.save(product);
 
-    // Simple update logic for relations: Remove all and re-add (for MVP simplicity)
-    // In production, sync logic is better.
     if (categories) {
       await this.productCategoryRepository.delete({ productId: id });
       const productCategories = categories.map(catId =>
@@ -87,22 +83,16 @@ export class ProductService {
       await this.productCategoryRepository.save(productCategories);
     }
 
-    // Variant update logic is complex (update existing, add new, remove old).
-    // For MVP, if variants are provided, we assume strictly managing via IDs or replacements.
-    // Here avoiding full replacement to not break history if orderItems exist.
-    // Skipped complex variant update for brevity, assuming standard update logic.
-
-    return this.findOne(tenantId, id);
+    return this.findOne(id);
   }
 
-  async remove(tenantId: string, id: string): Promise<void> {
-    const product = await this.findOne(tenantId, id);
-    // Soft delete or status change usually better, but sticking to prompt implied 'delete'
+  async remove(id: string): Promise<void> {
+    const product = await this.findOne(id);
     await this.productRepository.remove(product);
   }
 
-  async publish(tenantId: string, id: string): Promise<Product> {
-    const product = await this.findOne(tenantId, id);
+  async publish(id: string): Promise<Product> {
+    const product = await this.findOne(id);
     product.status = ProductStatus.ACTIVE;
     product.publishedAt = new Date();
     return this.productRepository.save(product);

@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { UserRole } from './user-role.entity';
 import { UserPermission } from './user-permission.entity';
@@ -15,13 +16,10 @@ export enum UserStatus {
 }
 
 @Entity()
-@Unique(['tenant', 'email'])
-export class User {
+@Unique(['tenantId', 'email'])
+export class User extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  tenantId: string;
 
   @ManyToOne(() => Tenant, (tenant) => tenant.users, { onDelete: 'CASCADE' })
   tenant: Tenant;

@@ -6,6 +6,8 @@ import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../product/entities/product.entity';
 import { ProductVariant } from '../product/entities/product-variant.entity';
 import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
+import { ClsService } from 'nestjs-cls';
+import { RequestContext } from '../../common/context/request.context';
 
 @Injectable()
 export class OrderService {
@@ -15,9 +17,11 @@ export class OrderService {
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
     private dataSource: DataSource,
+    private readonly cls: ClsService,
   ) { }
 
-  async create(tenantId: string, userId: string, createOrderDto: CreateOrderDto): Promise<Order> {
+  async create(createOrderDto: CreateOrderDto): Promise<Order> {
+    const userId = this.cls.get(RequestContext.USER_ID);
     const { items, ...orderData } = createOrderDto;
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -28,7 +32,6 @@ export class OrderService {
       // 1. Create Order
       const order = this.orderRepository.create({
         ...orderData,
-        tenantId,
         createdById: userId,
         status: OrderStatus.PENDING,
         orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
@@ -101,7 +104,7 @@ export class OrderService {
       }
 
       await queryRunner.commitTransaction();
-      return this.findOne(tenantId, savedOrder.id);
+      return this.findOne(savedOrder.id);
 
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -111,13 +114,13 @@ export class OrderService {
     }
   }
 
-  async findAll(tenantId: string): Promise<Order[]> {
-    return this.orderRepository.find({ where: { tenantId } });
+  async findAll(): Promise<Order[]> {
+    return this.orderRepository.find();
   }
 
-  async findOne(tenantId: string, id: string): Promise<Order> {
+  async findOne(id: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { id, tenantId },
+      where: { id } as any,
       relations: ['items', 'createdBy', 'delivery'],
     });
 
@@ -127,37 +130,37 @@ export class OrderService {
     return order;
   }
 
-  async update(tenantId: string, id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOne(tenantId, id);
+  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
+    const order = await this.findOne(id);
     this.orderRepository.merge(order, updateOrderDto as any);
     return this.orderRepository.save(order);
   }
 
-  async cancel(tenantId: string, id: string, reason: string): Promise<Order> {
-    const order = await this.findOne(tenantId, id);
+  async cancel(id: string, reason: string): Promise<Order> {
+    const order = await this.findOne(id);
     order.status = OrderStatus.CANCELLED;
     order.cancelReason = reason;
     order.cancelledAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async approve(tenantId: string, id: string): Promise<Order> {
-    const order = await this.findOne(tenantId, id);
+  async approve(id: string): Promise<Order> {
+    const order = await this.findOne(id);
     order.status = OrderStatus.ACCEPTED;
     order.acceptedAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async assignDriver(tenantId: string, id: string, driverId: string): Promise<Order> {
-    const order = await this.findOne(tenantId, id);
+  async assignDriver(id: string, driverId: string): Promise<Order> {
+    const order = await this.findOne(id);
     order.driverId = driverId;
     order.status = OrderStatus.ASSIGNED;
     order.assignedAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async complete(tenantId: string, id: string): Promise<Order> {
-    const order = await this.findOne(tenantId, id);
+  async complete(id: string): Promise<Order> {
+    const order = await this.findOne(id);
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     return this.orderRepository.save(order);

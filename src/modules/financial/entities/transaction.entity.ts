@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { BankAccount } from './bank-account.entity';
 import { Order } from '../../order/entities/order.entity';
 
@@ -20,12 +21,9 @@ export enum TransactionStatus {
 }
 
 @Entity()
-export class Transaction {
+export class Transaction extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  tenantId: string;
 
   @Column({ nullable: true })
   organizationId: string;

@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { ProductCategory } from './product-category.entity';
 import { ProductVariant } from './product-variant.entity';
@@ -11,13 +12,10 @@ export enum ProductStatus {
 }
 
 @Entity()
-@Unique(['tenant', 'slug'])
-export class Product {
+@Unique(['tenantId', 'slug'])
+export class Product extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  tenantId: string;
 
   @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   tenant: Tenant;

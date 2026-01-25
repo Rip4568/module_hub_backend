@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique, OneToOne, JoinColumn } from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Driver } from '../../driver/entities/driver.entity';
@@ -8,6 +8,7 @@ import { OrderItem } from './order-item.entity';
 import { Delivery } from '../../delivery/entities/delivery.entity';
 import { Transaction } from '../../financial/entities/transaction.entity';
 import { Address } from '../../../common/interfaces/address.interface';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -28,12 +29,9 @@ export enum PaymentStatus {
 }
 
 @Entity()
-export class Order {
+export class Order extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  tenantId: string;
 
   @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   tenant: Tenant;

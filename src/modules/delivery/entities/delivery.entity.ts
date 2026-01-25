@@ -2,9 +2,10 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Order } from '../../order/entities/order.entity';
 import { Driver } from '../../driver/entities/driver.entity';
 import { Address } from '../../../common/interfaces/address.interface';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity()
-export class Delivery {
+export class Delivery extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

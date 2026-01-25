@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Vehicle } from '../../vehicle/entities/vehicle.entity';
 import { Driver } from '../../driver/entities/driver.entity';
@@ -11,7 +12,7 @@ export enum DocumentStatus {
 }
 
 @Entity()
-export class Document {
+export class Document extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

@@ -1,15 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Index } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { User } from '../../user/entities/user.entity';
 
 @Entity()
-@Index(['tenantId', 'createdAt']) // Common query pattern for logs
-export class ActivityLog {
+@Index(['tenantId', 'createdAt'])
+export class ActivityLog extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  @Index() // Good for filtering by tenant independently
-  tenantId: string;
 
   @Column({ nullable: true })
   userId: string;

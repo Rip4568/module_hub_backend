@@ -1,6 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
 import { OrderService } from './order.service';
-import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ModuleGuard } from '../../common/guards/module.guard';
@@ -18,53 +17,52 @@ export class OrderController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_ORDER)
-  create(@CurrentTenant() tenantId: string, @Request() req: any, @Body() createOrderDto: CreateOrderDto) {
-    return this.orderService.create(tenantId, req.user.userId, createOrderDto);
+  create(@Body() createOrderDto: CreateOrderDto) {
+    return this.orderService.create(createOrderDto);
   }
 
   @Get()
   @RequiresPermission(Permissions.READ_ORDER)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.orderService.findAll(tenantId);
+  findAll() {
+    return this.orderService.findAll();
   }
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_ORDER)
-  findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.orderService.findOne(tenantId, id);
+  findOne(@Param('id') id: string) {
+    return this.orderService.findOne(id);
   }
 
   @Put(':id')
   @RequiresPermission(Permissions.UPDATE_ORDER)
   update(
-    @CurrentTenant() tenantId: string,
     @Param('id') id: string,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    return this.orderService.update(tenantId, id, updateOrderDto);
+    return this.orderService.update(id, updateOrderDto);
   }
 
   @Post(':id/cancel')
   @RequiresPermission(Permissions.CANCEL_ORDER)
-  cancel(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body('reason') reason: string) {
-    return this.orderService.cancel(tenantId, id, reason);
+  cancel(@Param('id') id: string, @Body('reason') reason: string) {
+    return this.orderService.cancel(id, reason);
   }
 
   @Post(':id/approve')
   @RequiresPermission(Permissions.APPROVE_ORDER)
-  approve(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.orderService.approve(tenantId, id);
+  approve(@Param('id') id: string) {
+    return this.orderService.approve(id);
   }
 
   @Post(':id/assign/:driverId')
   @RequiresPermission(Permissions.ASSIGN_DRIVER)
-  assignDriver(@CurrentTenant() tenantId: string, @Param('id') id: string, @Param('driverId') driverId: string) {
-    return this.orderService.assignDriver(tenantId, id, driverId);
+  assignDriver(@Param('id') id: string, @Param('driverId') driverId: string) {
+    return this.orderService.assignDriver(id, driverId);
   }
 
   @Post(':id/complete')
   @RequiresPermission(Permissions.COMPLETE_ORDER)
-  complete(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.orderService.complete(tenantId, id);
+  complete(@Param('id') id: string) {
+    return this.orderService.complete(id);
   }
 }

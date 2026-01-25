@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Document } from '../../document/entities/document.entity';
@@ -28,12 +29,9 @@ export enum VehicleStatus {
 }
 
 @Entity()
-export class Vehicle {
+export class Vehicle extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column()
-  tenantId: string;
 
   @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
   tenant: Tenant;

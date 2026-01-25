@@ -24,10 +24,19 @@ import { FinancialModule } from './modules/financial/financial.module';
 import { DocumentModule } from './modules/document/document.module';
 import { ReportModule } from './modules/report/report.module';
 
+// Common
+import { ClsModule } from 'nestjs-cls';
+import { TenantContextMiddleware } from './common/middlewares/tenant-context.middleware';
+import { NestModule, MiddlewareConsumer } from '@nestjs/common';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    ClsModule.forRoot({
+      global: true,
+      middleware: { mount: true },
     }),
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
@@ -57,4 +66,10 @@ import { ReportModule } from './modules/report/report.module';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TenantContextMiddleware)
+      .forRoutes('*');
+  }
+}

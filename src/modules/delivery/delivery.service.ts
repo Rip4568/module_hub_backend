@@ -15,14 +15,11 @@ export class DeliveryService {
   async create(createDeliveryDto: CreateDeliveryDto): Promise<Delivery> {
     const delivery = this.deliveryRepository.create(createDeliveryDto as any);
     const saved = await this.deliveryRepository.save(delivery);
-    if (Array.isArray(saved)) {
-      return saved[0];
-    }
-    return saved;
+    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async findOne(id: string): Promise<Delivery> {
-    const delivery = await this.deliveryRepository.findOne({ where: { id }, relations: ['order', 'driver'] });
+    const delivery = await this.deliveryRepository.findOne({ where: { id } as any, relations: ['order', 'driver'] });
     if (!delivery) {
       throw new NotFoundException(`Delivery with ID ${id} not found`);
     }
@@ -30,7 +27,7 @@ export class DeliveryService {
   }
 
   async findByOrder(orderId: string): Promise<Delivery | null> {
-    return this.deliveryRepository.findOne({ where: { orderId } });
+    return this.deliveryRepository.findOne({ where: { orderId } as any });
   }
 
   async updateLocation(id: string, lat: number, lng: number): Promise<Delivery> {

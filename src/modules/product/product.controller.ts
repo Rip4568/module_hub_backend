@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
 import { ModuleGuard } from '../../common/guards/module.guard';
@@ -17,41 +16,40 @@ export class ProductController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PRODUCT)
-  create(@CurrentTenant() tenantId: string, @Body() createProductDto: any) {
-    return this.productService.create(tenantId, createProductDto);
+  create(@Body() createProductDto: any) {
+    return this.productService.create(createProductDto);
   }
 
   @Get()
   @RequiresPermission(Permissions.READ_PRODUCT)
-  findAll(@CurrentTenant() tenantId: string, @Query() query: any) {
-    return this.productService.findAll(tenantId, query);
+  findAll(@Query() query: any) {
+    return this.productService.findAll(query);
   }
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_PRODUCT)
-  findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.productService.findOne(tenantId, id);
+  findOne(@Param('id') id: string) {
+    return this.productService.findOne(id);
   }
 
   @Put(':id')
   @RequiresPermission(Permissions.UPDATE_PRODUCT)
   update(
-    @CurrentTenant() tenantId: string,
     @Param('id') id: string,
     @Body() updateProductDto: any,
   ) {
-    return this.productService.update(tenantId, id, updateProductDto);
+    return this.productService.update(id, updateProductDto);
   }
 
   @Delete(':id')
   @RequiresPermission(Permissions.DELETE_PRODUCT)
-  remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.productService.remove(tenantId, id);
+  remove(@Param('id') id: string) {
+    return this.productService.remove(id);
   }
 
   @Post(':id/publish')
   @RequiresPermission(Permissions.PUBLISH_PRODUCT)
-  publish(@CurrentTenant() tenantId: string, @Param('id') id: string) {
-    return this.productService.publish(tenantId, id);
+  publish(@Param('id') id: string) {
+    return this.productService.publish(id);
   }
 }
