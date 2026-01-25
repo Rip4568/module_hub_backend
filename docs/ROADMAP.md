@@ -11,9 +11,9 @@ O ModuleHub é uma plataforma SaaS White-label que preenche a lacuna entre plani
 
 ### 🏁 Fase 1: O "Kernel" (Segurança & Base)
 > **Foco**: Garantir que dados de um cliente nunca vazem para outro e fundação sólida.
-- [ ] **Isolamento de Tenant (Zero-Trust)**:
+- [x] **Isolamento de Tenant (Zero-Trust)**:
   - Implementação de `TypeORM Subscribers` para garantir `where: { tenantId }` em todas as operações.
-- [ ] **Autenticação Avançada**:
+- [x] **Autenticação Avançada**:
   - JWT com Refresh Token e Rotação.
   - Cache de Permissões (Redis) para performance.
 - [ ] **Gerenciador de Módulos**:
@@ -21,27 +21,34 @@ O ModuleHub é uma plataforma SaaS White-label que preenche a lacuna entre plani
 
 ### 📦 Fase 2: O Core de Negócio (Inventory)
 > **Foco**: O coração do ERP. Gestão de produtos e estoque desacoplada de vendas.
-- [ ] **Extração do Core de Catálogo**:
+- [x] **Extração do Core de Catálogo**:
   - Separação de `Product` (Dados Logísticos: SKU, Peso, Custo) de `ProductEcommerce` (Dados de Venda: SEO, HTML, Vitrine).
-- [ ] **Controle de Estoque**:
+- [x] **Controle de Estoque**:
   - Implementação de Kardex (Histórico de Movimentações) imutável.
 
 ### 🚚 Fase 3: A Especialização (Logística)
 > **Foco**: Diferencial competitivo para distribuidoras.
-- [ ] **Gestão de Frota**:
+- [x] **Gestão de Frota**:
   - Veículos e Motoristas.
-- [ ] **Gestão de Pedidos (OMS)**:
+- [x] **Gestão de Pedidos (OMS)**:
   - Fluxo: Pendente -> Aprovado -> Separação -> Despachado -> Entregue.
   - Baixa automática de estoque e lançamento financeiro "A Receber".
 
 ### 🛒 Fase 4: Canais de Venda (E-commerce)
 > **Foco**: Conectar o Core Logístico à web.
-- [ ] **Storefront API**:
+- [x] **Storefront API**:
   - Endpoints públicos para vitrine virtual.
   - Carrinho e Checkout integrado ao OMS.
 
 ---
 
-## Próximos Passos (Imediato)
-1. Refatoração do Schema para suportar Multi-Tenancy seguro no TypeORM.
-2. Separação das tabelas de Produto.
+## 🔮 Futuro e Expansão (Backlog de Governança)
+- [ ] **"Pure Fleet" Capability**:
+  - Permitir criação de `Delivery` sem `Order` (e sem `Product`), para transportadoras que só fazem frete, não venda.
+  - *Atual*: Hoje `Delivery` exige um `Order` que exige `Product`. Necessário refatorar para `ServiceOrder`.
+- [ ] **Limites e Planos**:
+  - Implementar verificação de "Max Modules = 5".
+  - Bloquear ativação se exceder plano.
+  - Mensagem de upgrade customizável.
+- [ ] **Integração Frontend**:
+  - Próximo grande marco do projeto.

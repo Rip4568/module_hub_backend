@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Delivery } from './entities/delivery.entity';
+import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
+import { DeliveryDocument } from './entities/delivery-document.entity';
 import { DeliveryService } from './delivery.service';
 import { DeliveryController } from './delivery.controller';
 import { Order } from '../order/entities/order.entity';
@@ -11,7 +13,7 @@ import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Delivery, Order, Transaction])],
+  imports: [TypeOrmModule.forFeature([Delivery, Order, Transaction, DeliveryTrackingLog, DeliveryDocument])],
   controllers: [DeliveryController],
   providers: [
     DeliveryService,
@@ -34,6 +36,20 @@ import { ClsService } from 'nestjs-cls';
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
         return new TenantRepository(Transaction, dataSource.manager, dataSource.createQueryRunner(), cls);
+      },
+    },
+    {
+      provide: getRepositoryToken(DeliveryTrackingLog),
+      inject: [DataSource, ClsService],
+      useFactory: (dataSource: DataSource, cls: ClsService) => {
+        return new TenantRepository(DeliveryTrackingLog, dataSource.manager, dataSource.createQueryRunner(), cls);
+      },
+    },
+    {
+      provide: getRepositoryToken(DeliveryDocument),
+      inject: [DataSource, ClsService],
+      useFactory: (dataSource: DataSource, cls: ClsService) => {
+        return new TenantRepository(DeliveryDocument, dataSource.manager, dataSource.createQueryRunner(), cls);
       },
     },
   ],

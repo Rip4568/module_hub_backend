@@ -7,6 +7,7 @@ import { ProductEcommerceProfile } from './entities/ecommerce-profile.entity';
 import { InventoryLog } from './entities/inventory-log.entity';
 import { ProductService } from './product.service';
 import { ProductController } from './product.controller';
+import { ProductStorefrontController } from './product-storefront.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -20,7 +21,7 @@ import { ClsService } from 'nestjs-cls';
     TenantModuleModule,
     PermissionModule
   ],
-  controllers: [ProductController],
+  controllers: [ProductController, ProductStorefrontController],
   providers: [
     ProductService,
     {

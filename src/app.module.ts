@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { RoleModule } from './modules/role/role.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { ActivityLogModule } from './modules/activity-log/activity-log.module';
+import { CustomerModule } from './modules/customer/customer.module';
 
 // Business Modules
 import { OrganizationModule } from './modules/organization/organization.module';
@@ -50,6 +51,7 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     RoleModule,
     PermissionModule,
     ActivityLogModule,
+    CustomerModule,
 
     // Business
     OrganizationModule,

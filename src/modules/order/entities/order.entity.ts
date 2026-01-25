@@ -9,6 +9,7 @@ import { Delivery } from '../../delivery/entities/delivery.entity';
 import { Transaction } from '../../financial/entities/transaction.entity';
 import { Address } from '../../../common/interfaces/address.interface';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
+import { Customer } from '../../customer/entities/customer.entity';
 
 export enum OrderStatus {
   PENDING = 'PENDING',
@@ -160,4 +161,10 @@ export class Order extends TenantAwareEntity {
 
   @OneToMany(() => Transaction, (transaction) => transaction.order)
   transactions: Transaction[];
+
+  @Column({ nullable: true })
+  customerId: string;
+
+  @ManyToOne(() => Customer)
+  customer: Customer;
 }

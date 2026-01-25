@@ -12,17 +12,33 @@ export enum DeliveryStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export enum DeliveryType {
+  STANDARD = 'STANDARD',
+  SERVICE = 'SERVICE',
+  INTERNAL_TRANSFER = 'INTERNAL_TRANSFER',
+}
+
 @Entity()
 export class Delivery extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   orderId: string;
 
-  @OneToOne(() => Order, (order) => order.delivery, { onDelete: 'CASCADE' })
+  @OneToOne(() => Order, (order) => order.delivery, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   order: Order;
+
+  @Column({
+    type: 'enum',
+    enum: DeliveryType,
+    default: DeliveryType.STANDARD,
+  })
+  type: DeliveryType;
+
+  @Column({ nullable: true })
+  description: string;
 
   @Column()
   driverId: string;

@@ -83,7 +83,57 @@ export class ProductService {
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
+    return product;
+  }
 
+  async findAllPublic(query: any = {}): Promise<Product[]> {
+    const qb = this.productRepository.createQueryBuilder('product')
+      .leftJoinAndSelect('product.ecommerceProfile', 'ecommerce')
+      .leftJoinAndSelect('product.categories', 'pc')
+      .leftJoinAndSelect('pc.category', 'category')
+      .where('ecommerce.status = :status', { status: EcommerceStatus.PUBLISHED });
+
+    // Performance & Security: Select only necessary public fields
+    qb.select([
+      'product.id',
+      'product.name',
+      'product.price',
+      'product.sku',
+      'product.stock',
+      'ecommerce',
+      'pc',
+      'category'
+    ]);
+
+    return qb.getMany();
+  }
+
+  async findOnePublicBySlug(slug: string): Promise<Product> {
+    const qb = this.productRepository.createQueryBuilder('product')
+      .leftJoinAndSelect('product.ecommerceProfile', 'ecommerce')
+      .leftJoinAndSelect('product.categories', 'pc')
+      .leftJoinAndSelect('pc.category', 'category')
+      .leftJoinAndSelect('product.variants', 'variant')
+      .where('ecommerce.slug = :slug', { slug })
+      .andWhere('ecommerce.status = :status', { status: EcommerceStatus.PUBLISHED });
+
+    qb.select([
+      'product.id',
+      'product.name',
+      'product.price',
+      'product.sku',
+      'product.stock',
+      'ecommerce',
+      'pc',
+      'category',
+      'variant'
+    ]);
+
+    const product = await qb.getOne();
+
+    if (!product) {
+      throw new NotFoundException(`Product with slug ${slug} not found`);
+    }
     return product;
   }
 

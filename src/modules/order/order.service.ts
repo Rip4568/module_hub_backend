@@ -10,6 +10,7 @@ import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
 import { ClsService } from 'nestjs-cls';
 import { RequestContext } from '../../common/context/request.context';
 import { Delivery, DeliveryStatus } from '../delivery/entities/delivery.entity';
+import { CustomerService } from '../customer/customer.service';
 
 @Injectable()
 export class OrderService {
@@ -22,6 +23,7 @@ export class OrderService {
     private inventoryLogRepository: Repository<InventoryLog>,
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
+    private customerService: CustomerService,
     private dataSource: DataSource,
     private readonly cls: ClsService,
   ) { }
@@ -129,6 +131,31 @@ export class OrderService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  async checkout(tenantId: string, checkoutDto: any): Promise<Order> {
+    const { items, customer, ...orderData } = checkoutDto;
+
+    // 1. Get or Create Customer
+    const savedCustomer = await this.customerService.getOrCreate(tenantId, customer);
+
+    // 2. Map to CreateOrderDto structure and call internal create
+    const createOrderDto = {
+      ...orderData,
+      items,
+      customerName: savedCustomer.name,
+      customerEmail: savedCustomer.email,
+      customerPhone: savedCustomer.phone,
+      customerDocument: savedCustomer.document,
+      customerId: savedCustomer.id,
+      tenantId: tenantId,
+    };
+
+    // Need to temporarily set tenantId in CLS if not present
+    return this.cls.run(async () => {
+      this.cls.set(RequestContext.TENANT_ID, tenantId);
+      return this.create(createOrderDto);
+    });
   }
 
   async findAll(): Promise<Order[]> {

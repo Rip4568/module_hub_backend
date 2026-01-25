@@ -1,24 +1,32 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { ClsService } from 'nestjs-cls';
+import { RequestContext } from '../context/request.context';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private cls: ClsService,
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-    if (!user || !user.tenantId) {
+    const request = context.switchToHttp().getRequest();
+    const tenantId = this.cls.get(RequestContext.TENANT_ID);
+
+    if (!tenantId) {
       throw new ForbiddenException('Tenant context missing');
     }
 
-    // You might want to verify if the tenant actually exists and is active here
-    // But for performance, relying on the JWT claim (tenantId) is often enough
-    // provided that the JWT is invalidated if the tenant is suspended.
-
-    // Attaching tenant info to request if needed, but tenantId is already in user
-    request.tenant = { id: user.tenantId };
+    if (!isPublic && (!request.user || request.user.tenantId !== tenantId)) {
+      throw new UnauthorizedException('Invalid tenant access');
+    }
 
     return true;
   }

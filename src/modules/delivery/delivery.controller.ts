@@ -1,14 +1,19 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CompleteDeliveryDto } from './dto/complete-delivery.dto';
-// Delivery often accessed by mobile app drivers, permissions might be different
-// Keeping it simple for now
+import { CreateDeliveryDto } from './dto/create-delivery.dto';
+import { DeliveryDocumentType } from './entities/delivery-document.entity';
 
 @Controller('deliveries')
 @UseGuards(JwtAuthGuard)
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) { }
+
+  @Post()
+  create(@Body() createDeliveryDto: CreateDeliveryDto) {
+    return this.deliveryService.create(createDeliveryDto);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -20,9 +25,22 @@ export class DeliveryController {
     return this.deliveryService.start(id);
   }
 
-  @Post(':id/location')
-  updateLocation(@Param('id') id: string, @Body() location: { lat: number; lng: number }) {
-    return this.deliveryService.updateLocation(id, location.lat, location.lng);
+  @Patch(':id/location')
+  updateLocation(
+    @Param('id') id: string,
+    @Body() location: { lat: number; lng: number; batteryLevel?: number; timestamp?: Date },
+    @Req() req: any
+  ) {
+    return this.deliveryService.updateLocation(id, location, req.user.userId);
+  }
+
+  @Post(':id/documents')
+  uploadDocument(
+    @Param('id') id: string,
+    @Body() document: { type: DeliveryDocumentType; url: string },
+    @Req() req: any
+  ) {
+    return this.deliveryService.uploadDocument(id, document, req.user.userId);
   }
 
   @Post(':id/complete')

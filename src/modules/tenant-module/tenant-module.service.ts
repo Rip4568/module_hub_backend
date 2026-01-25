@@ -10,7 +10,14 @@ export class TenantModuleService {
     private tenantModuleRepository: Repository<TenantModuleEntity>,
   ) { }
 
+  // List of modules that cannot be deactivated
+  private readonly ESSENTIAL_MODULES = ['tenant', 'auth', 'user', 'role', 'permission', 'tenant-module'];
+  private readonly MAX_MODULES_PER_PLAN = 5;
+
   async isModuleEnabled(tenantId: string, moduleId: string): Promise<boolean> {
+    // Essential modules are always enabled conceptually, but we check DB for consistency
+    if (this.ESSENTIAL_MODULES.includes(moduleId)) return true;
+
     const tenantModule = await this.tenantModuleRepository.findOne({
       where: { tenantId, moduleId, isActive: true },
     });
@@ -22,6 +29,19 @@ export class TenantModuleService {
   }
 
   async activateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity> {
+    // 1. Check Limit
+    const activeCount = await this.tenantModuleRepository.count({
+      where: { tenantId, isActive: true }
+    });
+
+    if (activeCount >= this.MAX_MODULES_PER_PLAN) {
+      // Check if module is already active to avoid false positive
+      const existing = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
+      if (!existing || !existing.isActive) {
+        throw new Error(`Plan limit reached. Max ${this.MAX_MODULES_PER_PLAN} active modules allowed.`);
+      }
+    }
+
     let module = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
     if (module) {
       module.isActive = true;
@@ -38,6 +58,11 @@ export class TenantModuleService {
   }
 
   async deactivateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity | null> {
+    // 1. Check Essentials
+    if (this.ESSENTIAL_MODULES.includes(moduleId)) {
+      throw new Error(`Cannot deactivate essential module: ${moduleId}`);
+    }
+
     const module = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
     if (module) {
       module.isActive = false;
