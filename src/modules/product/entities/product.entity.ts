@@ -1,18 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { ProductCategory } from './product-category.entity';
 import { ProductVariant } from './product-variant.entity';
 import { OrderItem } from '../../order/entities/order-item.entity';
-
-export enum ProductStatus {
-  DRAFT = 'DRAFT',
-  ACTIVE = 'ACTIVE',
-  ARCHIVED = 'ARCHIVED',
-}
+import { ProductEcommerceProfile } from './ecommerce-profile.entity';
 
 @Entity()
-@Unique(['tenantId', 'slug'])
 export class Product extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -25,12 +19,6 @@ export class Product extends TenantAwareEntity {
 
   @Column()
   name: string;
-
-  @Column()
-  slug: string;
-
-  @Column({ nullable: true })
-  description: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
@@ -65,31 +53,6 @@ export class Product extends TenantAwareEntity {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   length: number;
 
-  @Column('simple-array')
-  images: string[];
-
-  @Column({ nullable: true })
-  thumbnail: string;
-
-  @Column({ nullable: true })
-  metaTitle: string;
-
-  @Column({ nullable: true })
-  metaDescription: string;
-
-  @Column({
-    type: 'enum',
-    enum: ProductStatus,
-    default: ProductStatus.DRAFT,
-  })
-  status: ProductStatus;
-
-  @Column({ default: true })
-  isActive: boolean;
-
-  @Column({ default: false })
-  isFeatured: boolean;
-
   @Column({ type: 'json', nullable: true })
   metadata: any;
 
@@ -99,8 +62,8 @@ export class Product extends TenantAwareEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column({ nullable: true })
-  publishedAt: Date;
+  @OneToOne(() => ProductEcommerceProfile, (profile) => profile.product)
+  ecommerceProfile: ProductEcommerceProfile;
 
   @OneToMany(() => ProductCategory, (productCategory) => productCategory.product)
   categories: ProductCategory[];

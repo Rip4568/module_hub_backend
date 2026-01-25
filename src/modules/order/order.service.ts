@@ -5,9 +5,11 @@ import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../product/entities/product.entity';
 import { ProductVariant } from '../product/entities/product-variant.entity';
+import { InventoryLog, InventoryLogType } from '../product/entities/inventory-log.entity';
 import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
 import { ClsService } from 'nestjs-cls';
 import { RequestContext } from '../../common/context/request.context';
+import { Delivery, DeliveryStatus } from '../delivery/entities/delivery.entity';
 
 @Injectable()
 export class OrderService {
@@ -16,6 +18,10 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
+    @InjectRepository(InventoryLog)
+    private inventoryLogRepository: Repository<InventoryLog>,
+    @InjectRepository(Delivery)
+    private deliveryRepository: Repository<Delivery>,
     private dataSource: DataSource,
     private readonly cls: ClsService,
   ) { }
@@ -79,6 +85,17 @@ export class OrderService {
               await queryRunner.manager.save(product);
             }
           }
+
+          // 3. Record in InventoryLog (Kardex)
+          const inventoryLog = this.inventoryLogRepository.create({
+            productId: item.productId,
+            variantId: item.variantId,
+            type: InventoryLogType.SALE,
+            quantity: item.quantity,
+            referenceId: savedOrder.id,
+            notes: `Venda Ref Pedido ${savedOrder.orderNumber}`,
+          });
+          await queryRunner.manager.save(inventoryLog);
 
           const subtotal = unitPrice * item.quantity;
           total += subtotal;
@@ -164,5 +181,41 @@ export class OrderService {
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     return this.orderRepository.save(order);
+  }
+
+  async dispatch(id: string): Promise<Order> {
+    const order = await this.findOne(id);
+    if (order.status !== OrderStatus.ACCEPTED && order.status !== OrderStatus.ASSIGNED) {
+      throw new Error(`Cannot dispatch order in status ${order.status}`);
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      order.status = OrderStatus.IN_ROUTE;
+      order.inRouteAt = new Date();
+      const savedOrder = await queryRunner.manager.save(order);
+
+      // Create Delivery
+      const delivery = this.deliveryRepository.create({
+        orderId: savedOrder.id,
+        tenantId: savedOrder.tenantId,
+        driverId: savedOrder.driverId,
+        vehicleId: savedOrder.vehicleId,
+        destinationAddress: savedOrder.shippingAddress,
+        status: DeliveryStatus.PENDING,
+      });
+      await queryRunner.manager.save(delivery);
+
+      await queryRunner.commitTransaction();
+      return savedOrder;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

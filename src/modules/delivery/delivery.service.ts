@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Delivery } from './entities/delivery.entity';
+import { Order, OrderStatus } from '../order/entities/order.entity';
+import { Transaction, TransactionType, TransactionStatus } from '../financial/entities/transaction.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { CompleteDeliveryDto } from './dto/complete-delivery.dto';
 
@@ -10,6 +12,11 @@ export class DeliveryService {
   constructor(
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
+    @InjectRepository(Order)
+    private orderRepository: Repository<Order>,
+    @InjectRepository(Transaction)
+    private transactionRepository: Repository<Transaction>,
+    private dataSource: DataSource,
   ) { }
 
   async create(createDeliveryDto: CreateDeliveryDto): Promise<Delivery> {
@@ -45,10 +52,46 @@ export class DeliveryService {
 
   async complete(id: string, proof: CompleteDeliveryDto): Promise<Delivery> {
     const delivery = await this.findOne(id);
-    delivery.completedAt = new Date();
-    delivery.photoUrl = proof.photoUrl;
-    delivery.signature = proof.signature;
-    delivery.signedBy = proof.signedBy;
-    return this.deliveryRepository.save(delivery);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Update Delivery
+      delivery.completedAt = new Date();
+      delivery.photoUrl = proof.photoUrl;
+      delivery.signature = proof.signature;
+      delivery.signedBy = proof.signedBy;
+      const savedDelivery = await queryRunner.manager.save(delivery);
+
+      // 2. Update Order
+      const order = await queryRunner.manager.findOne(Order, { where: { id: delivery.orderId } });
+      if (order) {
+        order.status = OrderStatus.COMPLETED;
+        order.completedAt = new Date();
+        await queryRunner.manager.save(order);
+
+        // 3. Create Financial Transaction
+        const transaction = this.transactionRepository.create({
+          orderId: order.id,
+          tenantId: order.tenantId,
+          type: TransactionType.CREDIT,
+          amount: order.total,
+          status: TransactionStatus.PENDING,
+          description: `Receita Ref Pedido ${order.orderNumber}`,
+          organizationId: order.organizationId,
+        });
+        await queryRunner.manager.save(transaction);
+      }
+
+      await queryRunner.commitTransaction();
+      return savedDelivery;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

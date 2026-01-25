@@ -4,6 +4,14 @@ import { Driver } from '../../driver/entities/driver.entity';
 import { Address } from '../../../common/interfaces/address.interface';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
+export enum DeliveryStatus {
+  PENDING = 'PENDING',
+  IN_ROUTE = 'IN_ROUTE',
+  ARRIVED = 'ARRIVED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED',
+}
+
 @Entity()
 export class Delivery extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -22,10 +30,20 @@ export class Delivery extends TenantAwareEntity {
   @ManyToOne(() => Driver, (driver) => driver.deliveries)
   driver: Driver;
 
-  @Column({ type: 'json' })
+  @Column({ nullable: true })
+  vehicleId: string;
+
+  @Column({
+    type: 'enum',
+    enum: DeliveryStatus,
+    default: DeliveryStatus.PENDING,
+  })
+  status: DeliveryStatus;
+
+  @Column({ type: 'json', nullable: true })
   originAddress: Address;
 
-  @Column({ type: 'json' })
+  @Column({ type: 'json', nullable: true })
   destinationAddress: Address;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })

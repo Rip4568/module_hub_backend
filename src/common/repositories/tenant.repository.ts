@@ -54,5 +54,12 @@ export class TenantRepository<T extends TenantAwareEntity> extends Repository<T>
         return super.findOne(this.applyTenantFilter(options));
     }
 
-    // Add more overrides as needed (count, findAndCount, etc.)
+    createQueryBuilder(alias: string, queryRunner?: any): SelectQueryBuilder<T> {
+        const qb = super.createQueryBuilder(alias, queryRunner);
+        const tenantId = this.tenantId;
+        if (tenantId) {
+            qb.andWhere(`${alias}.tenantId = :tenantId`, { tenantId });
+        }
+        return qb;
+    }
 }

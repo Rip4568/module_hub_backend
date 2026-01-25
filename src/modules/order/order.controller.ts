@@ -65,4 +65,10 @@ export class OrderController {
   complete(@Param('id') id: string) {
     return this.orderService.complete(id);
   }
+
+  @Post(':id/dispatch')
+  @RequiresPermission(Permissions.UPDATE_ORDER) // Or a specific DISPATCH_ORDER if exists
+  dispatch(@Param('id') id: string) {
+    return this.orderService.dispatch(id);
+  }
 }

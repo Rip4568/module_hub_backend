@@ -28,8 +28,8 @@ export class ProductController {
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_PRODUCT)
-  findOne(@Param('id') id: string) {
-    return this.productService.findOne(id);
+  findOne(@Param('id') id: string, @Query('withEcommerce') withEcommerce: string) {
+    return this.productService.findOne(id, { withEcommerce: withEcommerce === 'true' });
   }
 
   @Put(':id')

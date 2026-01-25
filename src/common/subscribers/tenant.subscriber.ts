@@ -35,10 +35,9 @@ export class TenantSubscriber implements EntitySubscriberInterface<TenantAwareEn
 
         if (!event.entity.tenantId) {
             if (!tenantId) {
-                // This might happen for background jobs or scripts. 
-                // For now, we allow it if there is no context, but it should be logged or handled strictly.
-                // throw new UnauthorizedException('Missing tenant context for insertion.');
-                return;
+                // This might happen for background jobs or scripts.
+                // For production, we must ensure every insert has a tenant context.
+                throw new UnauthorizedException('Missing tenant context for insertion.');
             }
             event.entity.tenantId = tenantId;
         }
