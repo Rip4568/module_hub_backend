@@ -9,9 +9,16 @@ import { TenantAwareEntity } from '../entities/tenant-aware.entity';
 import { RequestContext } from '../context/request.context';
 import { UnauthorizedException } from '@nestjs/common';
 
+import { DataSource } from 'typeorm';
+
 @EventSubscriber()
 export class TenantSubscriber implements EntitySubscriberInterface<TenantAwareEntity> {
-    constructor(private readonly cls: ClsService) { }
+    constructor(
+        dataSource: DataSource,
+        private readonly cls: ClsService
+    ) {
+        dataSource.subscribers.push(this);
+    }
 
     /**
      * Indicates that this subscriber only listen to TenantAwareEntity events.

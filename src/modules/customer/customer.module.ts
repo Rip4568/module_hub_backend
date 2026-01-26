@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Customer } from './entities/customer.entity';
 import { CustomerService } from './customer.service';
+import { CustomerController } from './customer.controller';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
@@ -9,6 +10,7 @@ import { ClsService } from 'nestjs-cls';
 
 @Module({
     imports: [TypeOrmModule.forFeature([Customer])],
+    controllers: [CustomerController],
     providers: [
         CustomerService,
         {

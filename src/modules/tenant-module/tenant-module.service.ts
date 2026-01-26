@@ -71,4 +71,12 @@ export class TenantModuleService {
     }
     return null;
   }
+  async getActiveModules(tenantId: string): Promise<string[]> {
+    const dbModules = await this.tenantModuleRepository.find({
+      where: { tenantId, isActive: true }
+    });
+    const dbModuleIds = dbModules.map(m => m.moduleId);
+    // Merge essential modules with DB modules, ensuring uniqueness
+    return [...new Set([...this.ESSENTIAL_MODULES, ...dbModuleIds])];
+  }
 }

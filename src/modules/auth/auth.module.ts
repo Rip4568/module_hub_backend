@@ -8,10 +8,11 @@ import { UserModule } from '../user/user.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { TenantModule } from '../tenant/tenant.module';
 
+import { TenantModuleModule } from '../tenant-module/tenant-module.module';
+
 @Module({
   imports: [
     UserModule,
-    TenantModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -21,9 +22,11 @@ import { TenantModule } from '../tenant/tenant.module';
       }),
       inject: [ConfigService],
     }),
+    TenantModule,
+    TenantModuleModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
-export class AuthModule {}
+export class AuthModule { }
