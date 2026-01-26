@@ -36,6 +36,22 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
+    // If tenantName is provided, create a new tenant
+    if (registerDto.tenantName) {
+      const slug = registerDto.tenantName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+      const tenant = await this.tenantService.create({
+        name: registerDto.tenantName,
+        slug: slug,
+        ownerId: 'temp', // Will update later or ignore for now
+        config: {}
+      });
+      registerDto.tenantId = tenant.id;
+    }
+
+    if (!registerDto.tenantId) {
+      throw new Error('Tenant ID is required if not creating a new one');
+    }
+
     return this.userService.create(registerDto);
   }
 }
