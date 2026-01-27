@@ -45,14 +45,10 @@ export class AuthService {
   async login(user: Partial<User>) {
     const payload = { email: user.email, sub: user.id, tenantId: user.tenantId };
 
-    // Fetch active modules for this tenant
-    // We combine ESSENTIAL_MODULES + DB Active Modules
-    // Fetch active modules for this tenant
-    // We combine ESSENTIAL_MODULES + DB Active Modules
     const activeModules = await this.tenantModuleService.getActiveModules(user.tenantId || '');
 
     return {
-      access_token: this.jwtService.sign(payload),
+      token: this.jwtService.sign(payload),
       user: {
         ...user,
       },
