@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { ProductCategory } from './entities/product-category.entity';
@@ -33,7 +33,7 @@ import { OrderModule } from '../order/order.module';
     ]),
     TenantModuleModule,
     PermissionModule,
-    OrderModule
+    forwardRef(() => OrderModule)
   ],
   controllers: [ProductController, ProductStorefrontController, InventoryController],
   providers: [
