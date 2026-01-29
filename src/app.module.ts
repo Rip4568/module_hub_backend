@@ -24,6 +24,7 @@ import { DriverModule } from './modules/driver/driver.module';
 import { FinancialModule } from './modules/financial/financial.module';
 import { DocumentModule } from './modules/document/document.module';
 import { ReportModule } from './modules/report/report.module';
+import { DriverPortalModule } from './modules/driver-portal/driver-portal.module';
 
 // Common
 import { ClsModule, ClsMiddleware } from 'nestjs-cls';
@@ -65,6 +66,7 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     FinancialModule,
     DocumentModule,
     ReportModule,
+    DriverPortalModule,
   ],
   controllers: [],
   providers: [TenantSubscriber],

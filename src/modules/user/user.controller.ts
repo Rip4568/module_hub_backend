@@ -12,7 +12,7 @@ import { Permissions } from '../../common/constants/permissions';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
-@RequiresModule('user_management')
+@RequiresModule('user') // Core module, always enabled
 export class UserController {
   constructor(private readonly userService: UserService) { }
 

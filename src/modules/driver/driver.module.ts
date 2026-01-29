@@ -6,15 +6,17 @@ import { DriverService } from './driver.service';
 import { DriverController } from './driver.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Driver, DriverVehicle]),
     TenantModuleModule,
-    PermissionModule
+    PermissionModule,
+    UserModule,
   ],
   controllers: [DriverController],
   providers: [DriverService],
   exports: [DriverService],
 })
-export class DriverModule {}
+export class DriverModule { }

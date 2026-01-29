@@ -9,6 +9,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TenantModule } from '../tenant/tenant.module';
 
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
+import { RoleModule } from '../role/role.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Driver } from '../driver/entities/driver.entity';
 
 @Module({
   imports: [
@@ -23,7 +26,9 @@ import { TenantModuleModule } from '../tenant-module/tenant-module.module';
       inject: [ConfigService],
     }),
     TenantModule,
-    TenantModuleModule
+    TenantModuleModule,
+    RoleModule,
+    TypeOrmModule.forFeature([Driver]),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

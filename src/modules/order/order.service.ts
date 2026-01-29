@@ -159,13 +159,16 @@ export class OrderService {
   }
 
   async findAll(): Promise<Order[]> {
-    return this.orderRepository.find();
+    return this.orderRepository.find({
+      relations: ['customer', 'driver', 'vehicle', 'items'],
+      order: { createdAt: 'DESC' }
+    });
   }
 
   async findOne(id: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
       where: { id } as any,
-      relations: ['items', 'createdBy', 'delivery'],
+      relations: ['items', 'createdBy', 'delivery', 'customer', 'driver', 'vehicle'],
     });
 
     if (!order) {
@@ -173,6 +176,8 @@ export class OrderService {
     }
     return order;
   }
+
+  // ... update, cancel, approve methods remain same ...
 
   async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
     const order = await this.findOne(id);
@@ -195,9 +200,11 @@ export class OrderService {
     return this.orderRepository.save(order);
   }
 
-  async assignDriver(id: string, driverId: string): Promise<Order> {
+  async assignResources(id: string, driverId: string, vehicleId?: string): Promise<Order> {
     const order = await this.findOne(id);
     order.driverId = driverId;
+    if (vehicleId) order.vehicleId = vehicleId;
+
     order.status = OrderStatus.ASSIGNED;
     order.assignedAt = new Date();
     return this.orderRepository.save(order);

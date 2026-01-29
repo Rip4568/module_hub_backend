@@ -54,10 +54,11 @@ export class OrderController {
     return this.orderService.approve(id);
   }
 
-  @Post(':id/assign/:driverId')
+  @Post(':id/assign')
   @RequiresPermission(Permissions.ASSIGN_DRIVER)
-  assignDriver(@Param('id') id: string, @Param('driverId') driverId: string) {
-    return this.orderService.assignDriver(id, driverId);
+  assignResources(@Param('id') id: string, @Body() body: { driverId: string, vehicleId?: string }) {
+    if (!body.driverId) throw new Error('Driver ID is required');
+    return this.orderService.assignResources(id, body.driverId, body.vehicleId);
   }
 
   @Post(':id/complete')
