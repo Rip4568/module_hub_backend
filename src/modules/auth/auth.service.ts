@@ -32,7 +32,7 @@ export class AuthService {
       const isMatch = await HashUtils.compare(pass, user.password);
       if (isMatch) {
         // Populate tenantId if we found the user without it
-        if (!user.tenantId && user['tenantId']) user.tenantId = user['tenantId'];
+        // The object already has the property via inheritance, verifying logic is redundant here.
 
         const { password, ...result } = user;
         return result;

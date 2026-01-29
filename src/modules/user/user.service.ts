@@ -22,7 +22,7 @@ export class UserService {
   ) { }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create(createUserDto as unknown as User);
+    const user = this.userRepository.create(createUserDto);
 
     // Hash password if present
     if (user.password) {
@@ -54,7 +54,7 @@ export class UserService {
   async addRole(userId: string, roleId: string): Promise<void> {
     const existing = await this.userRoleRepository.findOne({ where: { userId, roleId } });
     if (!existing) {
-      const userRole = this.userRoleRepository.create({ userId, roleId } as UserRole);
+      const userRole = this.userRoleRepository.create({ userId, roleId });
       await this.userRoleRepository.save(userRole);
     }
   }
@@ -76,7 +76,7 @@ export class UserService {
         userId,
         permissionId: permission.id,
         granted: true
-      } as UserPermission);
+      });
       await this.userPermissionRepository.save(userPerm);
     }
   }
@@ -94,7 +94,7 @@ export class UserService {
         userId,
         permissionId: permission.id,
         granted: false
-      } as UserPermission);
+      });
       await this.userPermissionRepository.save(userPerm);
     }
   }

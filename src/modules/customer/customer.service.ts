@@ -19,7 +19,7 @@ export class CustomerService {
 
     async findAll(tenantId: string): Promise<Customer[]> {
         return this.customerRepository.find({
-            where: { tenantId } as any
+            where: { tenantId }
         });
     }
 
@@ -42,7 +42,7 @@ export class CustomerService {
 
     async getOrCreate(tenantId: string, data: { email: string; name: string; phone?: string; document?: string }): Promise<Customer> {
         let customer = await this.customerRepository.findOne({
-            where: { tenantId, email: data.email } as any,
+            where: { tenantId, email: data.email },
         });
 
         if (!customer) {
