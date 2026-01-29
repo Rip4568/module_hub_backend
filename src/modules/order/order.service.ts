@@ -5,12 +5,13 @@ import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../product/entities/product.entity';
 import { ProductVariant } from '../product/entities/product-variant.entity';
-import { InventoryLog, InventoryLogType } from '../product/entities/inventory-log.entity';
 import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
 import { ClsService } from 'nestjs-cls';
 import { RequestContext } from '../../common/context/request.context';
 import { Delivery, DeliveryStatus } from '../delivery/entities/delivery.entity';
 import { CustomerService } from '../customer/customer.service';
+import { InventoryService } from '../product/inventory.service';
+import { StockLocationType } from '../product/entities/stock-level.entity';
 
 @Injectable()
 export class OrderService {
@@ -19,13 +20,12 @@ export class OrderService {
     private orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private orderItemRepository: Repository<OrderItem>,
-    @InjectRepository(InventoryLog)
-    private inventoryLogRepository: Repository<InventoryLog>,
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
     private customerService: CustomerService,
     private dataSource: DataSource,
     private readonly cls: ClsService,
+    private readonly inventoryService: InventoryService,
   ) { }
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
@@ -44,9 +44,14 @@ export class OrderService {
         status: OrderStatus.PENDING,
         orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
       } as Order);
+
+      // Determine Location
+      const locationType = orderData.vehicleId ? StockLocationType.VEHICLE : StockLocationType.WAREHOUSE;
+      const locationId = orderData.vehicleId;
+
       const savedOrder = await queryRunner.manager.save(order);
 
-      // 2. Process Items & Update Stock (Optimized)
+      // 2. Process Items & Update Stock (via InventoryService)
       if (items && items.length > 0) {
         let total = 0;
         const orderItems = [];
@@ -71,33 +76,19 @@ export class OrderService {
           if (item.variantId) {
             const variant = variantMap.get(item.variantId);
             if (!variant) throw new NotFoundException(`Variant ${item.variantId} not found`);
-
             unitPrice = variant.price ? Number(variant.price) : unitPrice;
-            if (variant.stock < item.quantity) {
-              throw new Error(`Insufficient stock for variant ${variant.name}`);
-            }
-            variant.stock -= item.quantity;
-            await queryRunner.manager.save(variant);
-          } else {
-            if (product.trackInventory && product.stock < item.quantity) {
-              throw new Error(`Insufficient stock for product ${product.name}`);
-            }
-            if (product.trackInventory) {
-              product.stock -= item.quantity;
-              await queryRunner.manager.save(product);
-            }
           }
 
-          // 3. Record in InventoryLog (Kardex)
-          const inventoryLog = this.inventoryLogRepository.create({
-            productId: item.productId,
-            variantId: item.variantId,
-            type: InventoryLogType.SALE,
-            quantity: item.quantity,
-            referenceId: savedOrder.id,
-            notes: `Venda Ref Pedido ${savedOrder.orderNumber}`,
-          });
-          await queryRunner.manager.save(inventoryLog);
+          // Deduct Stock via InventoryService (handles StockLevel and InventoryMovement)
+          await this.inventoryService.deductStockForOrder(
+            queryRunner.manager,
+            item.productId,
+            item.variantId || null,
+            item.quantity,
+            locationType,
+            locationId,
+            savedOrder.id
+          );
 
           const subtotal = unitPrice * item.quantity;
           total += subtotal;

@@ -5,9 +5,13 @@ import { ProductCategory } from './entities/product-category.entity';
 import { ProductVariant } from './entities/product-variant.entity';
 import { ProductEcommerceProfile } from './entities/ecommerce-profile.entity';
 import { InventoryLog } from './entities/inventory-log.entity';
+import { StockLevel } from './entities/stock-level.entity';
+import { InventoryMovement } from './entities/inventory-movement.entity';
 import { ProductService } from './product.service';
+import { InventoryService } from './inventory.service';
 import { ProductController } from './product.controller';
 import { ProductStorefrontController } from './product-storefront.controller';
+import { InventoryController } from './inventory.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -18,14 +22,23 @@ import { OrderModule } from '../order/order.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Product, ProductCategory, ProductVariant, ProductEcommerceProfile, InventoryLog]),
+    TypeOrmModule.forFeature([
+      Product,
+      ProductCategory,
+      ProductVariant,
+      ProductEcommerceProfile,
+      InventoryLog,
+      StockLevel,
+      InventoryMovement
+    ]),
     TenantModuleModule,
     PermissionModule,
     OrderModule
   ],
-  controllers: [ProductController, ProductStorefrontController],
+  controllers: [ProductController, ProductStorefrontController, InventoryController],
   providers: [
     ProductService,
+    InventoryService,
     {
       provide: getRepositoryToken(Product),
       inject: [DataSource, ClsService],
@@ -47,7 +60,21 @@ import { OrderModule } from '../order/order.module';
         return new TenantRepository(InventoryLog, dataSource.manager, dataSource.createQueryRunner(), cls);
       },
     },
+    {
+      provide: getRepositoryToken(StockLevel),
+      inject: [DataSource, ClsService],
+      useFactory: (dataSource: DataSource, cls: ClsService) => {
+        return new TenantRepository(StockLevel, dataSource.manager, dataSource.createQueryRunner(), cls);
+      },
+    },
+    {
+      provide: getRepositoryToken(InventoryMovement),
+      inject: [DataSource, ClsService],
+      useFactory: (dataSource: DataSource, cls: ClsService) => {
+        return new TenantRepository(InventoryMovement, dataSource.manager, dataSource.createQueryRunner(), cls);
+      },
+    },
   ],
-  exports: [ProductService],
+  exports: [ProductService, InventoryService],
 })
 export class ProductModule { }

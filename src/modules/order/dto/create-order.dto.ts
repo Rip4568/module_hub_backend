@@ -41,6 +41,14 @@ export class CreateOrderDto {
     @IsOptional()
     organizationId?: string;
 
+    @IsUUID()
+    @IsOptional()
+    vehicleId?: string;
+
+    @IsUUID()
+    @IsOptional()
+    driverId?: string;
+
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => OrderItemDto)

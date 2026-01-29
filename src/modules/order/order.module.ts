@@ -14,13 +14,15 @@ import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { CustomerModule } from '../customer/customer.module';
+import { ProductModule } from '../product/product.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, InventoryLog, Delivery, Transaction]),
     TenantModuleModule,
     PermissionModule,
-    CustomerModule
+    CustomerModule,
+    ProductModule
   ],
   controllers: [OrderController],
   providers: [
