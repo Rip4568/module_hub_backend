@@ -22,7 +22,8 @@
     "typeorm:revert-migration": "npm run typeorm migration:revert -- -d src/data-source.ts",
     "typeorm:create-migration": "npm run typeorm migration:create",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
-    "db:reset": "npm run typeorm schema:drop -- -d src/data-source.ts && npm run typeorm:run-migration && npm run seed"
+    "db:reset": "npm run typeorm schema:drop -- -d src/data-source.ts && npm run typeorm:run-migration && npm run seed",
+    "playground": "ts-node -r tsconfig-paths/register playground/playground.ts"
   },
   "repository": {
     "type": "git",

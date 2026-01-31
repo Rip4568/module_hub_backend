@@ -6,6 +6,7 @@ import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { RolePermission } from '../role/entities/role-permission.entity';
 import { RoleService } from '../role/role.service';
+import { RoleName } from '../role/enums/role-name.enum';
 
 @Injectable()
 export class TenantModuleService {
@@ -73,10 +74,7 @@ export class TenantModuleService {
   private async grantModulePermissionsToAdmin(tenantId: string, moduleId: string) {
     try {
       const adminRole = await this.roleRepository.findOne({
-        where: [
-          { tenantId, name: 'Admin' },
-          { tenantId, name: 'admin_geral' }
-        ]
+        where: { tenantId, name: RoleName.ADMIN }
       });
 
       if (!adminRole) {

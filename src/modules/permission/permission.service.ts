@@ -4,6 +4,7 @@ import { Repository, In } from 'typeorm';
 import { Permission } from './entities/permission.entity';
 import { UserRole } from '../user/entities/user-role.entity';
 import { UserPermission } from '../user/entities/user-permission.entity';
+import { RoleName } from '../role/enums/role-name.enum';
 
 @Injectable()
 export class PermissionService {
@@ -14,7 +15,7 @@ export class PermissionService {
     private userRoleRepository: Repository<UserRole>,
     @InjectRepository(UserPermission)
     private userPermissionRepository: Repository<UserPermission>,
-  ) {}
+  ) { }
 
   /**
    * Verifica se o usuário tem as permissões necessárias.
@@ -29,8 +30,8 @@ export class PermissionService {
     const userPermissions = await this.getUserPermissions(userId, tenantId);
 
     // Se usuário tem permissão 'admin' ou '*', retorna true para tudo
-    if (userPermissions.includes('*') || userPermissions.includes('admin_geral')) {
-        return true;
+    if (userPermissions.includes('*') || userPermissions.includes(RoleName.ADMIN)) {
+      return true;
     }
 
     for (const permission of requiredPermissions) {
@@ -66,14 +67,14 @@ export class PermissionService {
     });
 
     for (const userRole of userRoles) {
-      if (userRole.role.name === 'admin_geral') { // Exemplo de role superadmin
-         permissionNames.add('*');
+      if (userRole.role.name === RoleName.ADMIN) { // Exemplo de role superadmin
+        permissionNames.add('*');
       }
       for (const rolePermission of userRole.role.permissions) {
         const permName = rolePermission.permission.name;
         permissionNames.add(permName);
         if (rolePermission.permission.dependencies && rolePermission.permission.dependencies.length > 0) {
-            permissionDependencyMap.set(permName, rolePermission.permission.dependencies);
+          permissionDependencyMap.set(permName, rolePermission.permission.dependencies);
         }
       }
     }
@@ -89,7 +90,7 @@ export class PermissionService {
       if (userPermission.granted) {
         permissionNames.add(permName);
         if (userPermission.permission.dependencies && userPermission.permission.dependencies.length > 0) {
-            permissionDependencyMap.set(permName, userPermission.permission.dependencies);
+          permissionDependencyMap.set(permName, userPermission.permission.dependencies);
         }
       } else {
         // Revogação explícita
@@ -101,33 +102,33 @@ export class PermissionService {
     // 3. Resolver Dependências Recursivamente
     // Adiciona dependências das permissões que o usuário já tem
     const resolveDependencies = (perms: Set<string>) => {
-        let changed = false;
-        for (const perm of perms) {
-            const deps = permissionDependencyMap.get(perm);
-            if (deps) {
-                for (const dep of deps) {
-                    if (!perms.has(dep)) {
-                        perms.add(dep);
-                        // Precisamos buscar as dependências desta nova dependência também?
-                        // Se as dependências estiverem no mapa (porque vieram de outra query), sim.
-                        // Caso contrário, teríamos que buscar no banco.
-                        // Assumindo que o seed garante consistência ou que carregamos tudo.
-                        // Para simplificar e evitar N+1 recursivo no banco, assumimos dependencias diretas aqui.
-                        // Se quisermos recursão profunda sem mapa completo, precisaríamos carregar TODAS as permissões do sistema em memória (cache)
-                        // ou fazer queries recursivas.
-                        // Dado o MVP, vamos assumir 1 nível ou que o mapa é preenchido.
+      let changed = false;
+      for (const perm of perms) {
+        const deps = permissionDependencyMap.get(perm);
+        if (deps) {
+          for (const dep of deps) {
+            if (!perms.has(dep)) {
+              perms.add(dep);
+              // Precisamos buscar as dependências desta nova dependência também?
+              // Se as dependências estiverem no mapa (porque vieram de outra query), sim.
+              // Caso contrário, teríamos que buscar no banco.
+              // Assumindo que o seed garante consistência ou que carregamos tudo.
+              // Para simplificar e evitar N+1 recursivo no banco, assumimos dependencias diretas aqui.
+              // Se quisermos recursão profunda sem mapa completo, precisaríamos carregar TODAS as permissões do sistema em memória (cache)
+              // ou fazer queries recursivas.
+              // Dado o MVP, vamos assumir 1 nível ou que o mapa é preenchido.
 
-                        // Melhor abordagem para garantir integridade:
-                        // Se adicionamos uma dependência que não estava no set inicial,
-                        // não sabemos suas dependências a menos que consultemos o banco.
-                        // Mas, geralmente dependencies são simples (ex: update precisa de read).
-                        changed = true;
-                    }
-                }
+              // Melhor abordagem para garantir integridade:
+              // Se adicionamos uma dependência que não estava no set inicial,
+              // não sabemos suas dependências a menos que consultemos o banco.
+              // Mas, geralmente dependencies são simples (ex: update precisa de read).
+              changed = true;
             }
+          }
         }
-        // Se houve mudança, rodar de novo para pegar dependências das dependências (se tivermos a info)
-        if (changed) resolveDependencies(perms);
+      }
+      // Se houve mudança, rodar de novo para pegar dependências das dependências (se tivermos a info)
+      if (changed) resolveDependencies(perms);
     };
 
     // Para resolver dependências de dependências que não foram carregadas explicitamente,
@@ -143,8 +144,8 @@ export class PermissionService {
     const allDependenciesNeeded = new Set<string>();
 
     initialPerms.forEach(p => {
-        const deps = permissionDependencyMap.get(p);
-        if(deps) deps.forEach(d => allDependenciesNeeded.add(d));
+      const deps = permissionDependencyMap.get(p);
+      if (deps) deps.forEach(d => allDependenciesNeeded.add(d));
     });
 
     // Se tiver dependências que não são conhecidas (não estavam nas roles/diretas), buscá-las para saber SUAS dependências
@@ -156,10 +157,10 @@ export class PermissionService {
     // Iteração simples baseada no mapa já carregado
     const permsList = Array.from(permissionNames);
     for (const perm of permsList) {
-        const deps = permissionDependencyMap.get(perm);
-        if (deps) {
-            deps.forEach(dep => permissionNames.add(dep));
-        }
+      const deps = permissionDependencyMap.get(perm);
+      if (deps) {
+        deps.forEach(dep => permissionNames.add(dep));
+      }
     }
 
     return Array.from(permissionNames);
@@ -168,8 +169,8 @@ export class PermissionService {
   // Método auxiliar para obter dependências de uma permissão específica consultando o banco
   // Usado em canGrantPermission
   private async getPermissionDependenciesFromDb(permissionName: string): Promise<string[]> {
-      const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
-      return permission?.dependencies || [];
+    const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
+    return permission?.dependencies || [];
   }
 
   async canGrantPermission(
@@ -199,6 +200,6 @@ export class PermissionService {
   }
 
   async findAll() {
-      return this.permissionRepository.find();
+    return this.permissionRepository.find();
   }
 }

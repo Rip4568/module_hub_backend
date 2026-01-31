@@ -10,6 +10,7 @@ import { RequestContext } from '../../common/context/request.context';
 
 import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { RoleService } from '../role/role.service';
+import { RoleName } from '../role/enums/role-name.enum';
 import { Driver, DriverStatus } from '../driver/entities/driver.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -105,7 +106,7 @@ export class AuthService {
 
         // Create Admin Role for the new tenant
         adminRole = await this.roleService.create(tenant.id, {
-          name: 'admin_geral',
+          name: RoleName.ADMIN,
           displayName: 'Administrator',
           description: 'System Administrator with full access',
           isSystem: true
