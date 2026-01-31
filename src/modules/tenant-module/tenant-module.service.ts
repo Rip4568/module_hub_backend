@@ -41,13 +41,11 @@ export class TenantModuleService {
   }
 
   async activateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity> {
-    // 1. Check Limit
     const activeCount = await this.tenantModuleRepository.count({
       where: { tenantId, isActive: true }
     });
 
     if (activeCount >= this.MAX_MODULES_PER_PLAN) {
-      // Check if module is already active to avoid false positive
       const existing = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
       if (!existing || !existing.isActive) {
         throw new Error(`Plan limit reached. Max ${this.MAX_MODULES_PER_PLAN} active modules allowed.`);
@@ -67,7 +65,6 @@ export class TenantModuleService {
     }
     const saved = await this.tenantModuleRepository.save(module);
 
-    // Auto-grant permissions to Tenant Admin
     await this.grantModulePermissionsToAdmin(tenantId, moduleId);
 
     return Array.isArray(saved) ? saved[0] : saved;
@@ -75,7 +72,6 @@ export class TenantModuleService {
 
   private async grantModulePermissionsToAdmin(tenantId: string, moduleId: string) {
     try {
-      // 1. Find Admin Role (support both naming conventions)
       const adminRole = await this.roleRepository.findOne({
         where: [
           { tenantId, name: 'Admin' },
@@ -88,7 +84,6 @@ export class TenantModuleService {
         return;
       }
 
-      // 2. Find Module Permissions
       const permissions = await this.permissionRepository.find({ where: { module: moduleId } });
       const permissionIds = permissions.map(p => p.id);
 
@@ -99,7 +94,6 @@ export class TenantModuleService {
       }
     } catch (e) {
       console.error('Failed to auto-grant permissions:', e);
-      // Don't block activation if this fails, but log it.
     }
   }
 

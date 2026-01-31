@@ -13,11 +13,11 @@ import { RequestContext } from '../../common/context/request.context';
 export class InventoryService {
     constructor(
         @InjectRepository(StockLevel)
-        private stockLevelRepo: Repository<StockLevel>,
+        private stockLevelRepository: Repository<StockLevel>,
         @InjectRepository(InventoryMovement)
-        private movementRepo: Repository<InventoryMovement>,
+        private movementRepository: Repository<InventoryMovement>,
         @InjectRepository(Product)
-        private productRepo: Repository<Product>,
+        private productRepository: Repository<Product>,
         private dataSource: DataSource,
         private readonly cls: ClsService,
     ) { }
@@ -26,7 +26,6 @@ export class InventoryService {
         return this.cls.get(RequestContext.TENANT_ID);
     }
 
-    // Helper to resolve IDs
     private resolveIds(type: StockLocationType, id?: string) {
         if (type === StockLocationType.WAREHOUSE) {
             return { warehouseId: 'DEFAULT', vehicleId: null };
@@ -71,7 +70,6 @@ export class InventoryService {
                 vehicleId: vehicleId || undefined,
                 quantity: 0
             });
-            // We don't save yet, caller will save or update
         }
         return stockLevel;
     }
@@ -80,23 +78,19 @@ export class InventoryService {
         return this.dataSource.transaction(async (manager) => {
             const { productId, variantId, quantity, fromType, fromId, toType, toId } = dto;
 
-            // Source
             const sourceStock = await this.getStockLevel(manager, productId, variantId || null, fromType, fromId);
             if (sourceStock.quantity < quantity) {
                 throw new BadRequestException('Insufficient stock at source location');
             }
 
-            // Destination
-            const destStock = await this.getStockLevel(manager, productId, variantId || null, toType, toId);
+            const destinationStock = await this.getStockLevel(manager, productId, variantId || null, toType, toId);
 
-            // Execute Transfer
             sourceStock.quantity = Number(sourceStock.quantity) - quantity;
-            destStock.quantity = Number(destStock.quantity) + quantity;
+            destinationStock.quantity = Number(destinationStock.quantity) + quantity;
 
             await manager.save(sourceStock);
-            await manager.save(destStock);
+            await manager.save(destinationStock);
 
-            // Record Movement
             const movement = manager.create(InventoryMovement, {
                 tenant: { id: this.getTenantId() },
                 type: InventoryMovementType.TRANSFER,
@@ -110,7 +104,7 @@ export class InventoryService {
             });
             await manager.save(movement);
 
-            return { source: sourceStock, destination: destStock };
+            return { source: sourceStock, destination: destinationStock };
         });
     }
 
@@ -121,7 +115,7 @@ export class InventoryService {
             const stockLevel = await this.getStockLevel(manager, productId, variantId || null, locationType, locationId);
 
             const oldQty = Number(stockLevel.quantity);
-            const newQty = oldQty + quantity; // quantity can be negative
+            const newQty = oldQty + quantity;
 
             if (newQty < 0) {
                 throw new BadRequestException('Stock cannot be negative');
@@ -139,7 +133,7 @@ export class InventoryService {
                 destinationReferenceId: locationType === StockLocationType.VEHICLE ? (locationId || '') : 'DEFAULT',
                 productId,
                 variantId: variantId || undefined,
-                quantity, // Signed value
+                quantity,
                 reason
             });
             await manager.save(movement);
@@ -151,7 +145,16 @@ export class InventoryService {
         });
     }
 
-    // Method to be used by OrderService
+    /**
+     * 
+     * @param manager 
+     * @param productId 
+     * @param variantId 
+     * @param quantity 
+     * @param locationType 
+     * @param locationId Where the stock is, can be on the vehicle or any place that suport
+     * @param orderId 
+     */
     async deductStockForOrder(
         manager: EntityManager,
         productId: string,
@@ -177,28 +180,9 @@ export class InventoryService {
             originReferenceId: locationType === StockLocationType.VEHICLE ? (locationId || '') : 'DEFAULT',
             productId,
             variantId: variantId || undefined,
-            quantity: -quantity, // Sale is negative? Or just track absolute value? 
-            // Plan said: quantity: number. Usually movement quantity is absolute and type implies sign.
-            // But for Aggregation, signed is better.
-            // Let's stick to: SALE implies out. Quantity stored as absolute in my plan?
-            // "quantity: number".
-            // Let's store ABSOLUTE value, and Type tells us direction.
-            // Wait, in Adjust I used signed.
-            // Let's standardise: Movement Quantity is always ABSOLUTE.
-            // Logic decides.
-            // Correction: Adjust used signed in DTO, but movement should probably store the Delta?
-            // Let's use Signed for Adjust DTO, but storage...
-            // Simplest: Movement Quantity is the CHANGE amount. So sale is -1.
-            // But typically "Sold 1" means quantity 1.
-            // Let's stick to: InventoryMovement has `type`. 
-            // IN/ADJUSTMENT +ve / -ve.
-            // SALE implies -ve.
-            // Let's make it explicitly signed in DB for easier Sum?
-            // No, usually you want to know "Sold 5".
-            // Okay, let's keep quantity as "Amount involved". Logic interprets it.
+            quantity: -quantity,
         });
 
-        movement.quantity = quantity;
         movement.referenceId = orderId;
         await manager.save(movement);
     }
@@ -213,7 +197,7 @@ export class InventoryService {
             // Valid requirement: "Extrato". Usually means movements involving this context.
             // Let's keep simple: Filter by productId mainly.
         }
-        return this.movementRepo.find({
+        return this.movementRepository.find({
             where,
             order: { createdAt: 'DESC' },
             take: 50

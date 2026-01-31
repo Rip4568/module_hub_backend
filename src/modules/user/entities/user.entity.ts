@@ -5,7 +5,6 @@ import { UserRole } from './user-role.entity';
 import { UserPermission } from './user-permission.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Order } from '../../order/entities/order.entity';
-import { Driver } from '../../driver/entities/driver.entity';
 import { ActivityLog } from '../../activity-log/entities/activity-log.entity';
 
 export enum UserStatus {
