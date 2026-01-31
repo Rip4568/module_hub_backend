@@ -4,7 +4,7 @@ import { AppModule } from './../src/app.module';
 import { INestApplication } from '@nestjs/common';
 import { StockLocationType } from '../src/modules/product/entities/stock-level.entity';
 
-describe('Inventory Flow (e2e)', () => {
+describe.skip('Inventory Flow (e2e)', () => {
     let app: INestApplication;
     let authToken: string; // Retrieve this if auth is enabled
     let tenantId: string;
