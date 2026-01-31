@@ -3,11 +3,12 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { TestHelper } from './test-helper';
 import { TenantModuleService } from '../src/modules/tenant-module/tenant-module.service';
+import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 
 describe('Vehicles (e2e)', () => {
     let app: INestApplication;
@@ -23,6 +24,8 @@ describe('Vehicles (e2e)', () => {
             }).compile();
 
             app = moduleFixture.createNestApplication();
+            app.useGlobalPipes(new ValidationPipe({ transform: true }));
+            app.useGlobalFilters(new GlobalExceptionFilter());
             await app.init();
 
             tenantModuleService = app.get<TenantModuleService>(TenantModuleService);
@@ -76,6 +79,7 @@ describe('Vehicles (e2e)', () => {
         expect(response.body.plate).toEqual(newVehicle.plate);
         createdVehicleId = response.body.id;
         console.log('Created Vehicle ID:', createdVehicleId);
+        TestHelper.saveEnv('test_vehicleId', createdVehicleId);
     });
 
     it('/vehicles (GET) - List Vehicles', async () => {
@@ -113,15 +117,61 @@ describe('Vehicles (e2e)', () => {
         expect(response.body.color).toEqual('Black');
     });
 
-    it('/vehicles/:id (DELETE) - Delete Vehicle', async () => {
+    it('/vehicles (POST) - Create Vehicle Validation Error', async () => {
+        const invalidVehicle = {
+            type: 'CAR',
+            // Missing brand
+            // Missing model
+            year: 2024,
+            plate: 'INVALID'
+            // Missing other fields might trigger 400
+        };
+
         await request(app.getHttpServer())
-            .delete(`/vehicles/${createdVehicleId}`)
+            .post('/vehicles')
+            .set('Authorization', `Bearer ${token}`)
+            .set('x-tenant-id', tenantId)
+            .send(invalidVehicle)
+            .expect(400); // Expect Bad Request
+    });
+
+    it('/vehicles (POST) - Create Duplicate Vehicle (Plate)', async () => {
+        // Attempt to create a vehicle with the SAME plate as the one created in the first test
+        const duplicateVehicle = {
+            ...newVehicle,
+            model: 'Another Model' // Even if other fields differ, plate must be unique
+        };
+
+        const res = await request(app.getHttpServer())
+            .post('/vehicles')
+            .set('Authorization', `Bearer ${token}`)
+            .set('x-tenant-id', tenantId)
+            .send(duplicateVehicle);
+
+        expect(res.status).toBe(409); // Conflict
+        expect(res.body.message).toContain('Duplicate entry');
+    });
+
+    it('/vehicles/:id (DELETE) - Delete Vehicle', async () => {
+        // Create a temporary vehicle for deletion testing
+        const tempVehicle = { ...newVehicle, plate: `DEL-${Date.now()}` };
+        const createRes = await request(app.getHttpServer())
+            .post('/vehicles')
+            .set('Authorization', `Bearer ${token}`)
+            .set('x-tenant-id', tenantId)
+            .send(tempVehicle)
+            .expect(201);
+
+        const idToDelete = createRes.body.id;
+
+        await request(app.getHttpServer())
+            .delete(`/vehicles/${idToDelete}`)
             .set('Authorization', `Bearer ${token}`)
             .set('x-tenant-id', tenantId)
             .expect(200);
 
         await request(app.getHttpServer())
-            .get(`/vehicles/${createdVehicleId}`)
+            .get(`/vehicles/${idToDelete}`)
             .set('Authorization', `Bearer ${token}`)
             .set('x-tenant-id', tenantId)
             .expect(404);

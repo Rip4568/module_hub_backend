@@ -8,6 +8,8 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
 
+import { CreateProductDto } from './dto/create-product.dto';
+
 @Controller('products')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('ecommerce')
@@ -16,7 +18,7 @@ export class ProductController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PRODUCT)
-  create(@Body() createProductDto: any) {
+  create(@Body() createProductDto: CreateProductDto) {
     return this.productService.create(createProductDto);
   }
 

@@ -88,7 +88,7 @@ export class Vehicle extends TenantAwareEntity {
   @Column({ nullable: true })
   insuranceExpiry: Date;
 
-  @Column('simple-array')
+  @Column('simple-array', { nullable: true })
   photos: string[];
 
   @Column({

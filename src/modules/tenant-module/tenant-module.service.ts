@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantModuleEntity } from './entities/tenant-module.entity';
-
-import { Permission } from '../permission/entities/permission.entity';
 import { Role } from '../role/entities/role.entity';
+import { Permission } from '../permission/entities/permission.entity';
 import { RolePermission } from '../role/entities/role-permission.entity';
+import { RoleService } from '../role/role.service';
 
 @Injectable()
 export class TenantModuleService {
@@ -18,6 +18,8 @@ export class TenantModuleService {
     private roleRepository: Repository<Role>,
     @InjectRepository(RolePermission)
     private rolePermissionRepository: Repository<RolePermission>,
+    @Inject(forwardRef(() => RoleService))
+    private roleService: RoleService,
   ) { }
 
   // List of modules that cannot be deactivated
@@ -62,44 +64,43 @@ export class TenantModuleService {
         isActive: true,
         activatedAt: new Date()
       } as TenantModuleEntity);
+    }
+    const saved = await this.tenantModuleRepository.save(module);
 
-      // --- PERMISSION ASSIGNMENT LOGIC ---
-      // 1. Find the Tenant's Admin Role
-      console.log(`[ActivateModule] Finding Admin role for tenant: ${tenantId}`);
-      // Find 'admin_geral' (default) or 'Admin' (legacy/fallback)
+    // Auto-grant permissions to Tenant Admin
+    await this.grantModulePermissionsToAdmin(tenantId, moduleId);
+
+    return Array.isArray(saved) ? saved[0] : saved;
+  }
+
+  private async grantModulePermissionsToAdmin(tenantId: string, moduleId: string) {
+    try {
+      // 1. Find Admin Role (support both naming conventions)
       const adminRole = await this.roleRepository.findOne({
         where: [
-          { tenantId, name: 'admin_geral' },
-          { tenantId, name: 'Admin' }
+          { tenantId, name: 'Admin' },
+          { tenantId, name: 'admin_geral' }
         ]
       });
 
-      if (adminRole) {
-        console.log(`[ActivateModule] Admin role found: ${adminRole.id}`);
-        // 2. Find all permissions belonging to this module
-        const modulePermissions = await this.permissionRepository.find({
-          where: { module: moduleId }
-        });
-        console.log(`[ActivateModule] Found ${modulePermissions.length} permissions for module ${moduleId}`);
-
-        if (modulePermissions.length > 0) {
-          // 3. Create RolePermission entries
-          const rolePermissions = modulePermissions.map(permission => {
-            return this.rolePermissionRepository.create({
-              role: adminRole,
-              permission: permission
-            });
-          });
-
-          await this.rolePermissionRepository.save(rolePermissions);
-          console.log(`[ActivateModule] Assigned ${rolePermissions.length} permissions to Admin role`);
-        }
-      } else {
-        console.warn(`[ActivateModule] Admin role NOT found for tenant ${tenantId}`);
+      if (!adminRole) {
+        console.warn(`Admin role not found for tenant ${tenantId}. Skipping permission grant.`);
+        return;
       }
+
+      // 2. Find Module Permissions
+      const permissions = await this.permissionRepository.find({ where: { module: moduleId } });
+      const permissionIds = permissions.map(p => p.id);
+
+      if (permissionIds.length > 0) {
+        // 3. Grant Permissions using optimized bulk method
+        await this.roleService.grantPermissions(adminRole.id, permissionIds);
+        console.log(`Granted ${permissions.length} permissions for module ${moduleId} to Admin role.`);
+      }
+    } catch (e) {
+      console.error('Failed to auto-grant permissions:', e);
+      // Don't block activation if this fails, but log it.
     }
-    const saved = await this.tenantModuleRepository.save(module);
-    return Array.isArray(saved) ? saved[0] : saved;
   }
 
   async deactivateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity | null> {
