@@ -7,6 +7,7 @@ import { UserRole } from './entities/user-role.entity';
 import { UserPermission } from './entities/user-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -70,6 +71,17 @@ export class UserService {
 
   async findByEmailAndTenant(email: string, tenantId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email, tenantId } });
+  }
+
+  async updateByTenant(id: string, tenantId: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOneByTenant(id, tenantId);
+
+    if (updateUserDto.password) {
+      updateUserDto.password = await HashUtils.hash(updateUserDto.password);
+    }
+
+    Object.assign(user, updateUserDto);
+    return this.userRepository.save(user);
   }
 
   async removeByTenant(id: string, tenantId: string): Promise<void> {

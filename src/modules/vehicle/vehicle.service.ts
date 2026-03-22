@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Vehicle, VehicleStatus } from './entities/vehicle.entity';
+import { Vehicle, VehicleStatus, VehicleType, FuelType } from './entities/vehicle.entity';
+import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
 @Injectable()
 export class VehicleService {
@@ -10,10 +11,12 @@ export class VehicleService {
     private vehicleRepository: Repository<Vehicle>,
   ) {}
 
-  async create(tenantId: string, createVehicleDto: any): Promise<Vehicle> {
+  async create(tenantId: string, createVehicleDto: CreateVehicleDto): Promise<Vehicle> {
     const vehicle = this.vehicleRepository.create({
       ...createVehicleDto,
       tenantId,
+      type: createVehicleDto.type ?? VehicleType.CAR,
+      fuelType: createVehicleDto.fuelType ?? FuelType.GASOLINE,
     } as Vehicle);
     return this.vehicleRepository.save(vehicle);
   }
@@ -50,7 +53,9 @@ export class VehicleService {
 
   async setMaintenance(tenantId: string, id: string): Promise<Vehicle> {
       const vehicle = await this.findOne(tenantId, id);
-      vehicle.status = VehicleStatus.MAINTENANCE;
+      vehicle.status = vehicle.status === VehicleStatus.MAINTENANCE
+        ? VehicleStatus.ACTIVE
+        : VehicleStatus.MAINTENANCE;
       return this.vehicleRepository.save(vehicle);
   }
 }

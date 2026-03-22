@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Delete, Patch } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -35,6 +36,16 @@ export class UserController {
   @RequiresPermission(Permissions.READ_USER)
   findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.userService.findOneByTenant(id, tenantId);
+  }
+
+  @Patch(':id')
+  @RequiresPermission(Permissions.UPDATE_USER)
+  update(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.updateByTenant(id, tenantId, updateUserDto);
   }
 
   @Delete(':id')

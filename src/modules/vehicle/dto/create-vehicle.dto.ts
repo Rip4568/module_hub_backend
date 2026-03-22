@@ -3,8 +3,8 @@ import { VehicleType, FuelType, VehicleStatus } from '../entities/vehicle.entity
 
 export class CreateVehicleDto {
     @IsEnum(VehicleType)
-    @IsNotEmpty()
-    type: VehicleType;
+    @IsOptional()
+    type?: VehicleType;
 
     @IsString()
     @IsNotEmpty()
