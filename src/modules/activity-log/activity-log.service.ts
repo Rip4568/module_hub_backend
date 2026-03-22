@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityLog } from './entities/activity-log.entity';
@@ -17,5 +17,13 @@ export class ActivityLogService {
 
   async findAll(tenantId: string) {
       return this.activityLogRepository.find({ where: { tenantId } });
+  }
+
+  async findOne(tenantId: string, id: string) {
+      const log = await this.activityLogRepository.findOne({ where: { id, tenantId } });
+      if (!log) {
+          throw new NotFoundException(`Activity log with ID ${id} not found`);
+      }
+      return log;
   }
 }

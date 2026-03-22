@@ -31,7 +31,11 @@ export class ModuleGuard implements CanActivate {
     const tenantId = this.cls.get(RequestContext.TENANT_ID);
 
     if (!tenantId) {
-      throw new ForbiddenException('Tenant context missing');
+      throw new ForbiddenException({
+        code: 'TENANT_CONTEXT_MISSING',
+        message: 'Tenant context missing',
+        suggestedAction: 'SELECT_TENANT',
+      });
     }
 
     const hasModule = await this.tenantModuleService.isModuleEnabled(
@@ -40,9 +44,11 @@ export class ModuleGuard implements CanActivate {
     );
 
     if (!hasModule) {
-      throw new ForbiddenException(
-        `Module '${requiredModule}' is not enabled for this tenant`,
-      );
+      throw new ForbiddenException({
+        code: 'MODULE_NOT_ENABLED',
+        message: `Module '${requiredModule}' is not enabled for this tenant`,
+        suggestedAction: 'ACTIVATE_MODULE',
+      });
     }
 
     return true;

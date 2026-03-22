@@ -66,7 +66,7 @@ export class Transaction extends TenantAwareEntity {
   description: string;
 
   @Column({ type: 'json', nullable: true })
-  metadata: any;
+  metadata: Record<string, unknown>;
 
   @CreateDateColumn()
   createdAt: Date;

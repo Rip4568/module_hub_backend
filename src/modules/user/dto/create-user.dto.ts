@@ -14,9 +14,9 @@ export class CreateUserDto {
     @IsNotEmpty()
     name: string;
 
+    @IsOptional()
     @IsUUID()
-    @IsNotEmpty()
-    tenantId: string;
+    tenantId?: string;
 
     @IsOptional()
     @IsString()

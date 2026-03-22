@@ -43,12 +43,38 @@ export class UserService {
     return user;
   }
 
+  async findAllByTenant(tenantId: string): Promise<User[]> {
+    return this.userRepository.find({
+      where: { tenantId },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findOneByTenant(id: string, tenantId: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id, tenantId },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return user;
+  }
+
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
   }
 
   async findByEmailAndTenant(email: string, tenantId: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email, tenantId } });
+  }
+
+  async removeByTenant(id: string, tenantId: string): Promise<void> {
+    const user = await this.findOneByTenant(id, tenantId);
+    await this.userRepository.remove(user);
   }
 
   async addRole(userId: string, roleId: string): Promise<void> {

@@ -8,6 +8,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
+import { CreateTransactionDto } from './dto/create-transaction.dto';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
@@ -17,7 +18,7 @@ export class TransactionController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PAYMENT)
-  create(@CurrentTenant() tenantId: string, @Body() createTransactionDto: any) {
+  create(@CurrentTenant() tenantId: string, @Body() createTransactionDto: CreateTransactionDto) {
     return this.transactionService.create(tenantId, createTransactionDto);
   }
 

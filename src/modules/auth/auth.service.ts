@@ -73,6 +73,25 @@ export class AuthService {
     };
   }
 
+  async getCurrentUser(userId: string, tenantId?: string) {
+    if (!tenantId) {
+      throw new UnauthorizedException({
+        code: 'TENANT_CONTEXT_REQUIRED',
+        message: 'Tenant context is required',
+        suggestedAction: 'SELECT_TENANT',
+      });
+    }
+
+    const user = await this.userService.findOneByTenant(userId, tenantId);
+    const { password, ...safeUser } = user;
+    const activeModules = await this.tenantModuleService.getActiveModules(tenantId);
+
+    return {
+      user: safeUser,
+      activeModules,
+    };
+  }
+
   async register(registerDto: RegisterDto) {
     try {
       // 1. Check for existing user by email

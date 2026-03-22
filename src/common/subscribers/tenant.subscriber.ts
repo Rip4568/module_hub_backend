@@ -37,14 +37,22 @@ export class TenantSubscriber implements EntitySubscriberInterface<TenantAwareEn
         if (event.entity.tenantId && tenantId && event.entity.tenantId !== tenantId) {
             // Security: If both are present, they must match.
             // This prevents a user from trying to save data for another tenant.
-            throw new UnauthorizedException('Cross-tenant write attempt detected.');
+            throw new UnauthorizedException({
+                code: 'CROSS_TENANT_WRITE',
+                message: 'Cross-tenant write attempt detected.',
+                suggestedAction: 'VERIFY_TENANT_CONTEXT',
+            });
         }
 
         if (!event.entity.tenantId) {
             if (!tenantId) {
                 // This might happen for background jobs or scripts.
                 // For production, we must ensure every insert has a tenant context.
-                throw new UnauthorizedException('Missing tenant context for insertion.');
+                throw new UnauthorizedException({
+                    code: 'TENANT_CONTEXT_REQUIRED',
+                    message: 'Missing tenant context for insertion.',
+                    suggestedAction: 'SELECT_TENANT',
+                });
             }
             event.entity.tenantId = tenantId;
         }
@@ -61,7 +69,11 @@ export class TenantSubscriber implements EntitySubscriberInterface<TenantAwareEn
         const tenantIdUpdate = event.entity.tenantId;
 
         if (tenantIdUpdate && tenantIdSnapshot && tenantIdUpdate !== tenantIdSnapshot) {
-            throw new UnauthorizedException('tenantId is immutable and cannot be changed.');
+            throw new UnauthorizedException({
+                code: 'TENANT_IMMUTABLE',
+                message: 'tenantId is immutable and cannot be changed.',
+                suggestedAction: 'REMOVE_TENANT_ID_FROM_PAYLOAD',
+            });
         }
     }
 }

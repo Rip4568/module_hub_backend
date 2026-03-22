@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Delivery, DeliveryStatus, DeliveryType } from './entities/delivery.entity';
@@ -25,9 +25,41 @@ export class DeliveryService {
     private dataSource: DataSource,
   ) { }
 
+  async findAll(): Promise<Delivery[]> {
+    return this.deliveryRepository.find({
+      relations: ['order', 'driver', 'driver.user'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async create(createDeliveryDto: CreateDeliveryDto): Promise<Delivery> {
-    const delivery = this.deliveryRepository.create(createDeliveryDto as any);
-    return this.deliveryRepository.save(delivery as any) as Promise<Delivery>;
+    const delivery = this.deliveryRepository.create(createDeliveryDto);
+    return this.deliveryRepository.save(delivery);
+  }
+
+  async update(id: string, payload: Partial<CreateDeliveryDto>): Promise<Delivery> {
+    const delivery = await this.findOne(id);
+    Object.assign(delivery, payload);
+    return this.deliveryRepository.save(delivery);
+  }
+
+  async updateStatus(id: string, status: string): Promise<Delivery> {
+    const delivery = await this.findOne(id);
+    const normalized = (status || '').toUpperCase();
+
+    if (!(normalized in DeliveryStatus)) {
+      throw new BadRequestException(`Invalid delivery status: ${status}`);
+    }
+
+    delivery.status = DeliveryStatus[normalized as keyof typeof DeliveryStatus];
+    if (delivery.status === DeliveryStatus.IN_ROUTE && !delivery.startedAt) {
+      delivery.startedAt = new Date();
+    }
+    if (delivery.status === DeliveryStatus.COMPLETED && !delivery.completedAt) {
+      delivery.completedAt = new Date();
+    }
+
+    return this.deliveryRepository.save(delivery);
   }
 
   async createIndependent(data: Partial<CreateDeliveryDto> & { tenantId: string }): Promise<Delivery> {
@@ -35,12 +67,15 @@ export class DeliveryService {
       ...data,
       type: data.type || DeliveryType.SERVICE,
       status: DeliveryStatus.PENDING,
-    } as any);
-    return this.deliveryRepository.save(delivery as any) as Promise<Delivery>;
+    });
+    return this.deliveryRepository.save(delivery);
   }
 
   async findOne(id: string): Promise<Delivery> {
-    const delivery = await this.deliveryRepository.findOne({ where: { id } as any, relations: ['order', 'driver'] });
+    const delivery = await this.deliveryRepository.findOne({
+      where: { id },
+      relations: ['order', 'driver', 'driver.user'],
+    });
     if (!delivery) {
       throw new NotFoundException(`Delivery with ID ${id} not found`);
     }
@@ -48,7 +83,7 @@ export class DeliveryService {
   }
 
   async findByOrder(orderId: string): Promise<Delivery | null> {
-    return this.deliveryRepository.findOne({ where: { orderId } as any });
+    return this.deliveryRepository.findOne({ where: { orderId } });
   }
 
   async updateLocation(

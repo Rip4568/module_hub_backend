@@ -18,11 +18,12 @@ services:
     image: postgres:15-alpine
     container_name: module_hub_postgres_test
     restart: always
-    enviroment:
+    environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_DATABASE:-module_hub}
-    ports: -${DB_PORT:-5435}:5435
+    ports:
+      - "${DB_PORT_TEST:-5435}:5432"
     volumes:
       - postgres_data_test:/var/lib/postgresql/data
 

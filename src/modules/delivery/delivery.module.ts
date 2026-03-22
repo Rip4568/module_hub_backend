@@ -11,9 +11,15 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
+import { TenantModuleModule } from '../tenant-module/tenant-module.module';
+import { PermissionModule } from '../permission/permission.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Delivery, Order, Transaction, DeliveryTrackingLog, DeliveryDocument])],
+  imports: [
+    TypeOrmModule.forFeature([Delivery, Order, Transaction, DeliveryTrackingLog, DeliveryDocument]),
+    TenantModuleModule,
+    PermissionModule,
+  ],
   controllers: [DeliveryController],
   providers: [
     DeliveryService,

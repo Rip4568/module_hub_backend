@@ -6,6 +6,7 @@ import { BankAccountService } from './bank-account.service';
 import { BankAccountController } from './bank-account.controller';
 import { TransactionService } from './transaction.service';
 import { TransactionController } from './transaction.controller';
+import { FinancialController } from './financial.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 
@@ -15,7 +16,7 @@ import { PermissionModule } from '../permission/permission.module';
     TenantModuleModule,
     PermissionModule
   ],
-  controllers: [BankAccountController, TransactionController],
+  controllers: [BankAccountController, TransactionController, FinancialController],
   providers: [BankAccountService, TransactionService],
   exports: [BankAccountService, TransactionService],
 })

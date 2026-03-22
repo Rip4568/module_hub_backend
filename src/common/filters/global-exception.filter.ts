@@ -19,8 +19,18 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         if (exception instanceof HttpException) {
             status = exception.getStatus();
             const res = exception.getResponse();
-            message = typeof res === 'string' ? res : (res as any).message || res;
-            code = (res as any).error || 'HTTP_ERROR';
+            if (typeof res === 'string') {
+                message = res;
+                code = 'HTTP_ERROR';
+            } else {
+                const responseBody = res as {
+                    message?: string | string[];
+                    error?: string;
+                    code?: string;
+                };
+                message = responseBody.message || res;
+                code = responseBody.code || responseBody.error || 'HTTP_ERROR';
+            }
         } else if (exception instanceof QueryFailedError) {
             // Map TypeORM / Database Errors
             const driverError = (exception as any).driverError;

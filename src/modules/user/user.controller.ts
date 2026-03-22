@@ -18,14 +18,30 @@ export class UserController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_USER)
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  create(@CurrentTenant() tenantId: string, @Body() createUserDto: CreateUserDto) {
+    return this.userService.create({
+      ...createUserDto,
+      tenantId,
+    });
+  }
+
+  @Get()
+  @RequiresPermission(Permissions.READ_USER)
+  findAll(@CurrentTenant() tenantId: string) {
+    return this.userService.findAllByTenant(tenantId);
   }
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_USER)
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    return this.userService.findOneByTenant(id, tenantId);
+  }
+
+  @Delete(':id')
+  @RequiresPermission(Permissions.DELETE_USER)
+  async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    await this.userService.removeByTenant(id, tenantId);
+    return { deleted: true };
   }
 
   @Post(':id/roles/:roleId')

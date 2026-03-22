@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantModuleEntity } from './entities/tenant-module.entity';
@@ -49,7 +49,19 @@ export class TenantModuleService {
     if (activeCount >= this.MAX_MODULES_PER_PLAN) {
       const existing = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
       if (!existing || !existing.isActive) {
-        throw new Error(`Plan limit reached. Max ${this.MAX_MODULES_PER_PLAN} active modules allowed.`);
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+            code: 'PLAN_UPGRADE_REQUIRED',
+            message: `Your current plan allows up to ${this.MAX_MODULES_PER_PLAN} active modules. Upgrade your plan to activate additional modules.`,
+            details: {
+              activeCount,
+              maxModules: this.MAX_MODULES_PER_PLAN,
+            },
+            suggestedAction: 'UPGRADE_PLAN',
+          },
+          HttpStatus.PAYMENT_REQUIRED,
+        );
       }
     }
 
@@ -98,7 +110,10 @@ export class TenantModuleService {
   async deactivateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity | null> {
     // 1. Check Essentials
     if (this.ESSENTIAL_MODULES.includes(moduleId)) {
-      throw new Error(`Cannot deactivate essential module: ${moduleId}`);
+      throw new BadRequestException({
+        code: 'ESSENTIAL_MODULE',
+        message: `Cannot deactivate essential module: ${moduleId}`,
+      });
     }
 
     const module = await this.tenantModuleRepository.findOne({ where: { tenantId, moduleId } });
