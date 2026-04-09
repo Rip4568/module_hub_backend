@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Relation,
+  Unique,
+} from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { UserRole } from './user-role.entity';
@@ -21,7 +31,7 @@ export class User extends TenantAwareEntity {
   id: string;
 
   @ManyToOne(() => Tenant, (tenant) => tenant.users, { onDelete: 'CASCADE' })
-  tenant: Tenant;
+  tenant: Relation<Tenant>;
 
   @Column()
   email: string;
@@ -61,23 +71,23 @@ export class User extends TenantAwareEntity {
   updatedAt: Date;
 
   @OneToMany(() => UserRole, (userRole) => userRole.user)
-  roles: UserRole[];
+  roles: Relation<UserRole[]>;
 
   @OneToMany(() => UserPermission, (userPermission) => userPermission.user)
-  permissions: UserPermission[];
+  permissions: Relation<UserPermission[]>;
 
   @Column({ nullable: true })
   organizationId: string;
 
   @ManyToOne(() => Organization, (org) => org.users)
-  organization: Organization;
+  organization: Relation<Organization>;
 
   @OneToMany(() => Order, (order) => order.createdBy)
-  createdOrders: Order[];
+  createdOrders: Relation<Order[]>;
 
   @OneToMany(() => Order, (order) => order.assignedTo)
-  assignedOrders: Order[];
+  assignedOrders: Relation<Order[]>;
 
   @OneToMany(() => ActivityLog, (log) => log.user)
-  activityLogs: ActivityLog[];
+  activityLogs: Relation<ActivityLog[]>;
 }

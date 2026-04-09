@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+  Relation,
+} from 'typeorm';
 import { TenantModuleEntity } from '../../tenant-module/entities/tenant-module.entity';
 import { User } from '../../user/entities/user.entity';
 import { Role } from '../../role/entities/role.entity';
@@ -53,11 +61,11 @@ export class Tenant {
   updatedAt: Date;
 
   @OneToMany(() => TenantModuleEntity, (module) => module.tenant)
-  modules: TenantModuleEntity[];
+  modules: Relation<TenantModuleEntity[]>;
 
   @OneToMany(() => User, (user) => user.tenant)
-  users: User[];
+  users: Relation<User[]>;
 
   @OneToMany(() => Role, (role) => role.tenant)
-  roles: Role[];
+  roles: Relation<Role[]>;
 }

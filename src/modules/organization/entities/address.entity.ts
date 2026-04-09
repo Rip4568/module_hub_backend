@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  Relation,
+} from 'typeorm';
 import { Organization } from './organization.entity';
 
 export enum AddressType {
@@ -17,7 +25,7 @@ export class Address {
   organizationId: string;
 
   @ManyToOne(() => Organization, (org) => org.addresses, { onDelete: 'CASCADE' })
-  organization: Organization;
+  organization: Relation<Organization>;
 
   @Column({ nullable: true })
   userId: string;

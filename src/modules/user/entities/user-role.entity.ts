@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, Unique, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  ManyToOne,
+  Relation,
+  Unique,
+  Column,
+} from 'typeorm';
 import { User } from './user.entity';
 import { Role } from '../../role/entities/role.entity';
 
@@ -12,13 +20,13 @@ export class UserRole {
   userId: string;
 
   @ManyToOne(() => User, (user) => user.roles, { onDelete: 'CASCADE' })
-  user: User;
+  user: Relation<User>;
 
   @Column()
   roleId: string;
 
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'CASCADE' })
-  role: Role;
+  role: Relation<Role>;
 
   @CreateDateColumn()
   assignedAt: Date;

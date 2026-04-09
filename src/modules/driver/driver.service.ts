@@ -12,9 +12,22 @@ export class DriverService {
     @InjectRepository(Driver)
     private driverRepository: Repository<Driver>,
     private userService: UserService,
-  ) { }
+  ) {}
 
-  // ... (existing create, findAll, etc.)
+  private normalizeStatus(status?: string | null): DriverStatus {
+    const normalizedStatus = String(status ?? '').toUpperCase();
+    if (normalizedStatus === DriverStatus.ACTIVE) return DriverStatus.ACTIVE;
+    if (normalizedStatus === DriverStatus.BLOCKED) return DriverStatus.BLOCKED;
+    if (normalizedStatus === DriverStatus.INACTIVE) return DriverStatus.INACTIVE;
+    return DriverStatus.PENDING;
+  }
+
+  private sanitizeDriver(driver: Driver): Driver {
+    return {
+      ...driver,
+      status: this.normalizeStatus(driver.status),
+    };
+  }
 
   async invite(tenantId: string, inviteDto: InviteDriverDto): Promise<Driver> {
     // 1. Check if user exists
@@ -25,7 +38,7 @@ export class DriverService {
       // Scenario A: New User
       isNewUser = true;
       // Create user with random password (or handled by user service if it supports it)
-      // For now generating a random password placeholder. 
+      // For now generating a random password placeholder.
       // In real app, we should trigger a "Welcome/Reset Password" email flow.
       const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
 
@@ -43,7 +56,7 @@ export class DriverService {
 
     // 2. Check if driver profile exists for this tenant
     const existingDriver = await this.driverRepository.findOne({
-      where: { userId: user.id, tenantId }
+      where: { userId: user.id, tenantId },
     });
 
     if (existingDriver) {
@@ -54,44 +67,52 @@ export class DriverService {
     const driver = this.driverRepository.create({
       userId: user.id,
       tenantId,
-      status: DriverStatus.ACTIVE, // Drivers invited by company are immediately active per user request.
+      status: DriverStatus.ACTIVE,
       cpf: '00000000000', // Placeholder
       // name/email are in User entity
     } as unknown as Driver);
 
-    return this.driverRepository.save(driver);
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 
   async create(tenantId: string, createDriverDto: any): Promise<Driver> {
     const driver = this.driverRepository.create({
       ...createDriverDto,
       tenantId,
+      status: this.normalizeStatus(createDriverDto?.status),
     } as Driver);
-    return this.driverRepository.save(driver);
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 
   // ... rest of methods
 
   async findAll(tenantId: string): Promise<Driver[]> {
-    return this.driverRepository.find({ where: { tenantId }, relations: ['user'] }); // Include user relation to see names
+    const drivers = await this.driverRepository.find({ where: { tenantId }, relations: ['user'] });
+    return drivers.map((driver) => this.sanitizeDriver(driver));
   }
 
   async findOne(tenantId: string, id: string): Promise<Driver> {
     const driver = await this.driverRepository.findOne({
       where: { id, tenantId },
-      relations: ['user']
+      relations: ['user'],
     });
     if (!driver) {
       throw new NotFoundException(`Driver with ID ${id} not found`);
     }
-    return driver;
+    return this.sanitizeDriver(driver);
   }
 
   // ... update, remove, approve, block
   async update(tenantId: string, id: string, updateDriverDto: any): Promise<Driver> {
     const driver = await this.findOne(tenantId, id);
-    this.driverRepository.merge(driver, updateDriverDto);
-    return this.driverRepository.save(driver);
+    const payload = { ...updateDriverDto };
+
+    if ('status' in payload) {
+      payload.status = this.normalizeStatus(payload.status);
+    }
+
+    this.driverRepository.merge(driver, payload);
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
@@ -103,12 +124,12 @@ export class DriverService {
     const driver = await this.findOne(tenantId, id);
     driver.status = DriverStatus.ACTIVE;
     driver.approvedAt = new Date();
-    return this.driverRepository.save(driver);
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 
   async block(tenantId: string, id: string): Promise<Driver> {
     const driver = await this.findOne(tenantId, id);
     driver.status = DriverStatus.BLOCKED;
-    return this.driverRepository.save(driver);
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 }

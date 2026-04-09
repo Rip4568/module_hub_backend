@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Relation,
+  Unique,
+} from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { RolePermission } from './role-permission.entity';
 import { UserRole } from '../../user/entities/user-role.entity';
@@ -13,7 +23,7 @@ export class Role {
   tenantId: string;
 
   @ManyToOne(() => Tenant, (tenant) => tenant.roles, { onDelete: 'CASCADE' })
-  tenant: Tenant;
+  tenant: Relation<Tenant>;
 
   @Column()
   name: string;
@@ -34,8 +44,8 @@ export class Role {
   updatedAt: Date;
 
   @OneToMany(() => RolePermission, (rolePermission) => rolePermission.role)
-  permissions: RolePermission[];
+  permissions: Relation<RolePermission[]>;
 
   @OneToMany(() => UserRole, (userRole) => userRole.role)
-  users: UserRole[];
+  users: Relation<UserRole[]>;
 }

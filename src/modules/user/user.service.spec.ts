@@ -7,6 +7,7 @@ import { UserRole } from './entities/user-role.entity';
 import { UserPermission } from './entities/user-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { HashUtils } from '../../common/utils/hash.utils';
+import { Role } from '../role/entities/role.entity';
 
 describe('UserService', () => {
   let service: UserService;
@@ -36,6 +37,12 @@ describe('UserService', () => {
     findOne: jest.fn(),
   };
 
+  const roleRepositoryMock = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -46,6 +53,7 @@ describe('UserService', () => {
         { provide: getRepositoryToken(UserRole), useValue: userRoleRepositoryMock },
         { provide: getRepositoryToken(UserPermission), useValue: userPermissionRepositoryMock },
         { provide: getRepositoryToken(Permission), useValue: permissionRepositoryMock },
+        { provide: getRepositoryToken(Role), useValue: roleRepositoryMock },
       ],
     }).compile();
 
@@ -55,7 +63,19 @@ describe('UserService', () => {
   it('hashes password before persisting user', async () => {
     const hashSpy = jest.spyOn(HashUtils, 'hash').mockResolvedValue('hashed-password');
     userRepositoryMock.create.mockImplementation((input) => ({ ...input }));
-    userRepositoryMock.save.mockImplementation(async (input) => input);
+    userRepositoryMock.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'user-1',
+      name: 'Admin',
+      email: 'admin@tenant.com',
+      password: 'hashed-password',
+      tenantId: 'tenant-1',
+      roles: [],
+      permissions: [],
+    });
+    userRepositoryMock.save.mockImplementation(async (input) => ({
+      id: 'user-1',
+      ...input,
+    }));
 
     const created = await service.create({
       name: 'Admin',
@@ -65,24 +85,35 @@ describe('UserService', () => {
     });
 
     expect(hashSpy).toHaveBeenCalledWith('plain-password');
-    expect(created.password).toBe('hashed-password');
+    expect(userRepositoryMock.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        password: 'hashed-password',
+      }),
+    );
+    expect(created.password).toBeUndefined();
     hashSpy.mockRestore();
   });
 
   it('throws NotFoundException when tenant-scoped user is not found', async () => {
     userRepositoryMock.findOne.mockResolvedValue(null);
 
-    await expect(service.findOneByTenant('user-1', 'tenant-1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findOneByTenant('user-1', 'tenant-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('removes user only if user exists in tenant scope', async () => {
     const scopedUser = { id: 'user-1', tenantId: 'tenant-1' };
-    jest.spyOn(service, 'findOneByTenant').mockResolvedValue(scopedUser as User);
+    userRepositoryMock.findOne.mockResolvedValue(scopedUser);
     userRepositoryMock.remove.mockResolvedValue(undefined);
 
     await service.removeByTenant('user-1', 'tenant-1');
 
-    expect(service.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
+    expect(userRepositoryMock.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user-1', tenantId: 'tenant-1' },
+      }),
+    );
     expect(userRepositoryMock.remove).toHaveBeenCalledWith(scopedUser);
   });
 });

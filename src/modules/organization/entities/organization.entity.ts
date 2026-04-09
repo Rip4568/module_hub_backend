@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Relation,
+  Unique,
+} from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Address } from './address.entity';
@@ -28,7 +38,7 @@ export class Organization extends TenantAwareEntity {
   id: string;
 
   @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
-  tenant: Tenant;
+  tenant: Relation<Tenant>;
 
   @Column()
   legalName: string;
@@ -98,23 +108,23 @@ export class Organization extends TenantAwareEntity {
   approvedAt: Date;
 
   @OneToMany(() => Address, (address) => address.organization)
-  addresses: Address[];
+  addresses: Relation<Address[]>;
 
   @OneToMany(() => Document, (document) => document.organization)
-  documents: Document[];
+  documents: Relation<Document[]>;
 
   @OneToMany(() => BankAccount, (account) => account.organization)
-  bankAccounts: BankAccount[];
+  bankAccounts: Relation<BankAccount[]>;
 
   @OneToMany(() => User, (user) => user.organization)
-  users: User[];
+  users: Relation<User[]>;
 
   @OneToMany(() => Vehicle, (vehicle) => vehicle.organization)
-  vehicles: Vehicle[];
+  vehicles: Relation<Vehicle[]>;
 
   @OneToMany(() => Driver, (driver) => driver.organization)
-  drivers: Driver[];
+  drivers: Relation<Driver[]>;
 
   @OneToMany(() => Order, (order) => order.organization)
-  orders: Order[];
+  orders: Relation<Order[]>;
 }
