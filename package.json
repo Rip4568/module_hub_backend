@@ -29,8 +29,12 @@
     "playground": "ts-node -r tsconfig-paths/register playground/playground.ts"
   },
   "lint-staged": {
-    "*.{js,ts,json,md,yml,yaml}": [
-      "prettier --check"
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,json,md,yml,yaml}": [
+      "prettier --write"
     ]
   },
   "repository": {
