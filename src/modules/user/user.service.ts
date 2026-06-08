@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -7,6 +7,8 @@ import { UserRole } from './entities/user-role.entity';
 import { UserPermission } from './entities/user-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { Role } from '../role/entities/role.entity';
 
 @Injectable()
 export class UserService {
@@ -19,28 +21,115 @@ export class UserService {
     private userPermissionRepository: Repository<UserPermission>,
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
-  ) { }
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>,
+  ) {}
+
+  private sanitizeUser(user: User): User {
+    const sanitizedUser = { ...user } as Partial<User>;
+    delete sanitizedUser.password;
+    return sanitizedUser as User;
+  }
+
+  private async findOneEntity(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return user;
+  }
+
+  private async findOneEntityByTenant(id: string, tenantId: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id, tenantId },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return user;
+  }
+
+  private normalizeRoleName(roleName: string): { name: string; displayName: string } {
+    const displayName = roleName.trim();
+    return {
+      name: displayName.toLowerCase(),
+      displayName,
+    };
+  }
+
+  private async ensureRoleForTenant(tenantId: string, roleName: string): Promise<Role> {
+    const normalizedRole = this.normalizeRoleName(roleName);
+
+    const existingRole = await this.roleRepository.findOne({
+      where: { tenantId, name: normalizedRole.name },
+    });
+
+    if (existingRole) {
+      return existingRole;
+    }
+
+    const role = this.roleRepository.create({
+      tenantId,
+      name: normalizedRole.name,
+      displayName: normalizedRole.displayName,
+      description: `${normalizedRole.displayName} role`,
+      isSystem: false,
+    } as Role);
+
+    return this.roleRepository.save(role);
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const user = this.userRepository.create(createUserDto as unknown as User);
+    const existingUser = await this.findByEmailAndTenant(
+      createUserDto.email,
+      createUserDto.tenantId ?? '',
+    );
+    if (existingUser) {
+      throw new ConflictException('Email already in use for this tenant');
+    }
 
-    // Hash password if present
+    const { role, ...userPayload } = createUserDto;
+    const user = this.userRepository.create(userPayload);
+
     if (user.password) {
       user.password = await HashUtils.hash(user.password);
     }
 
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+
+    if (role && createUserDto.tenantId) {
+      const resolvedRole = await this.ensureRoleForTenant(createUserDto.tenantId, role);
+      await this.addRole(savedUser.id, resolvedRole.id);
+    }
+
+    return this.findOneByTenant(savedUser.id, savedUser.tenantId);
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission']
+    const user = await this.findOneEntity(id);
+    return this.sanitizeUser(user);
+  }
+
+  async findAllByTenant(tenantId: string): Promise<User[]> {
+    const users = await this.userRepository.find({
+      where: { tenantId },
+      relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+      order: { createdAt: 'DESC' },
     });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-    return user;
+    return users.map((user) => this.sanitizeUser(user));
+  }
+
+  async findOneByTenant(id: string, tenantId: string): Promise<User> {
+    const user = await this.findOneEntityByTenant(id, tenantId);
+    return this.sanitizeUser(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -51,10 +140,27 @@ export class UserService {
     return this.userRepository.findOne({ where: { email, tenantId } });
   }
 
+  async updateByTenant(id: string, tenantId: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOneEntityByTenant(id, tenantId);
+
+    if (updateUserDto.password) {
+      updateUserDto.password = await HashUtils.hash(updateUserDto.password);
+    }
+
+    Object.assign(user, updateUserDto);
+    const savedUser = await this.userRepository.save(user);
+    return this.sanitizeUser(savedUser);
+  }
+
+  async removeByTenant(id: string, tenantId: string): Promise<void> {
+    const user = await this.findOneEntityByTenant(id, tenantId);
+    await this.userRepository.remove(user);
+  }
+
   async addRole(userId: string, roleId: string): Promise<void> {
     const existing = await this.userRoleRepository.findOne({ where: { userId, roleId } });
     if (!existing) {
-      const userRole = this.userRoleRepository.create({ userId, roleId } as UserRole);
+      const userRole = this.userRoleRepository.create({ userId, roleId });
       await this.userRoleRepository.save(userRole);
     }
   }
@@ -67,7 +173,9 @@ export class UserService {
     const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
     if (!permission) return;
 
-    const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
+    const existing = await this.userPermissionRepository.findOne({
+      where: { userId, permissionId: permission.id },
+    });
     if (existing) {
       existing.granted = true;
       await this.userPermissionRepository.save(existing);
@@ -75,8 +183,8 @@ export class UserService {
       const userPerm = this.userPermissionRepository.create({
         userId,
         permissionId: permission.id,
-        granted: true
-      } as UserPermission);
+        granted: true,
+      });
       await this.userPermissionRepository.save(userPerm);
     }
   }
@@ -85,7 +193,9 @@ export class UserService {
     const permission = await this.permissionRepository.findOne({ where: { name: permissionName } });
     if (!permission) return;
 
-    const existing = await this.userPermissionRepository.findOne({ where: { userId, permissionId: permission.id } });
+    const existing = await this.userPermissionRepository.findOne({
+      where: { userId, permissionId: permission.id },
+    });
     if (existing) {
       existing.granted = false;
       await this.userPermissionRepository.save(existing);
@@ -93,8 +203,8 @@ export class UserService {
       const userPerm = this.userPermissionRepository.create({
         userId,
         permissionId: permission.id,
-        granted: false
-      } as UserPermission);
+        granted: false,
+      });
       await this.userPermissionRepository.save(userPerm);
     }
   }

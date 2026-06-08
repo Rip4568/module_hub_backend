@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Delete, Patch } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -12,20 +13,46 @@ import { Permissions } from '../../common/constants/permissions';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
-@RequiresModule('user_management')
+@RequiresModule('user') // Core module, always enabled
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Post()
   @RequiresPermission(Permissions.CREATE_USER)
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  create(@CurrentTenant() tenantId: string, @Body() createUserDto: CreateUserDto) {
+    return this.userService.create({
+      ...createUserDto,
+      tenantId,
+    });
+  }
+
+  @Get()
+  @RequiresPermission(Permissions.READ_USER)
+  findAll(@CurrentTenant() tenantId: string) {
+    return this.userService.findAllByTenant(tenantId);
   }
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_USER)
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  findOne(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    return this.userService.findOneByTenant(id, tenantId);
+  }
+
+  @Patch(':id')
+  @RequiresPermission(Permissions.UPDATE_USER)
+  update(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    return this.userService.updateByTenant(id, tenantId, updateUserDto);
+  }
+
+  @Delete(':id')
+  @RequiresPermission(Permissions.DELETE_USER)
+  async remove(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    await this.userService.removeByTenant(id, tenantId);
+    return { deleted: true };
   }
 
   @Post(':id/roles/:roleId')

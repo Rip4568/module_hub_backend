@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
@@ -14,13 +14,16 @@ import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { CustomerModule } from '../customer/customer.module';
+import { ProductModule } from '../product/product.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem, InventoryLog, Delivery, Transaction]),
     TenantModuleModule,
     PermissionModule,
-    CustomerModule
+    CustomerModule,
+
+    forwardRef(() => ProductModule)
   ],
   controllers: [OrderController],
   providers: [

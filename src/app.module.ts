@@ -24,10 +24,12 @@ import { DriverModule } from './modules/driver/driver.module';
 import { FinancialModule } from './modules/financial/financial.module';
 import { DocumentModule } from './modules/document/document.module';
 import { ReportModule } from './modules/report/report.module';
+import { DriverPortalModule } from './modules/driver-portal/driver-portal.module';
 
 // Common
-import { ClsModule } from 'nestjs-cls';
+import { ClsModule, ClsMiddleware } from 'nestjs-cls';
 import { TenantContextMiddleware } from './common/middlewares/tenant-context.middleware';
+import { TenantSubscriber } from './common/subscribers/tenant.subscriber';
 import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
 @Module({
@@ -37,7 +39,7 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     }),
     ClsModule.forRoot({
       global: true,
-      middleware: { mount: true },
+      middleware: { mount: false },
     }),
     TypeOrmModule.forRootAsync({
       useClass: DatabaseConfigService,
@@ -64,14 +66,15 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     FinancialModule,
     DocumentModule,
     ReportModule,
+    DriverPortalModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [TenantSubscriber],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(TenantContextMiddleware)
+      .apply(ClsMiddleware, TenantContextMiddleware)
       .forRoutes('*');
   }
 }

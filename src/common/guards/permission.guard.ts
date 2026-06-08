@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionService } from '../../modules/permission/permission.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -31,16 +31,38 @@ export class PermissionGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    const tenantId = user.tenantId;
+    const tenantId = user?.tenantId;
 
-    if (!user || !tenantId) {
-      return false;
+    if (!user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message: 'User not authenticated',
+        suggestedAction: 'LOGIN',
+      });
     }
 
-    return this.permissionService.userHasPermissions(
+    if (!tenantId) {
+      throw new ForbiddenException({
+        code: 'TENANT_REQUIRED',
+        message: 'Tenant context missing',
+        suggestedAction: 'SELECT_TENANT',
+      });
+    }
+
+    const hasPermissions = await this.permissionService.userHasPermissions(
       user.userId, // JWT payload has userId
       tenantId,
       requiredPermissions,
     );
+
+    if (!hasPermissions) {
+      throw new ForbiddenException({
+        code: 'PERMISSION_DENIED',
+        message: 'You do not have permission for this operation',
+        suggestedAction: 'REQUEST_PERMISSION',
+      });
+    }
+
+    return true;
   }
 }

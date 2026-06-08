@@ -1,14 +1,25 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Req } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CompleteDeliveryDto } from './dto/complete-delivery.dto';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { DeliveryDocumentType } from './entities/delivery-document.entity';
+import { TenantGuard } from '../../common/guards/tenant.guard';
+import { ModuleGuard } from '../../common/guards/module.guard';
+import { PermissionGuard } from '../../common/guards/permission.guard';
+import { RequiresModule } from '../../common/decorators/requires-module.decorator';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 
 @Controller('deliveries')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
+@RequiresModule('delivery')
 export class DeliveryController {
   constructor(private readonly deliveryService: DeliveryService) { }
+
+  @Get()
+  findAll() {
+    return this.deliveryService.findAll();
+  }
 
   @Post()
   create(@Body() createDeliveryDto: CreateDeliveryDto) {
@@ -20,6 +31,16 @@ export class DeliveryController {
     return this.deliveryService.findOne(id);
   }
 
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() payload: Partial<CreateDeliveryDto>) {
+    return this.deliveryService.update(id, payload);
+  }
+
+  @Patch(':id/status')
+  updateStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.deliveryService.updateStatus(id, body.status);
+  }
+
   @Post(':id/start')
   start(@Param('id') id: string) {
     return this.deliveryService.start(id);
@@ -29,7 +50,7 @@ export class DeliveryController {
   updateLocation(
     @Param('id') id: string,
     @Body() location: { lat: number; lng: number; batteryLevel?: number; timestamp?: Date },
-    @Req() req: any
+    @Req() req: AuthenticatedRequest
   ) {
     return this.deliveryService.updateLocation(id, location, req.user.userId);
   }
@@ -38,7 +59,7 @@ export class DeliveryController {
   uploadDocument(
     @Param('id') id: string,
     @Body() document: { type: DeliveryDocumentType; url: string },
-    @Req() req: any
+    @Req() req: AuthenticatedRequest
   ) {
     return this.deliveryService.uploadDocument(id, document, req.user.userId);
   }

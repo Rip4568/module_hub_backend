@@ -9,6 +9,8 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
 
+import { CreateVehicleDto } from './dto/create-vehicle.dto';
+
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('fleet_management')
@@ -17,7 +19,7 @@ export class VehicleController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_VEHICLE)
-  create(@CurrentTenant() tenantId: string, @Body() createVehicleDto: any) {
+  create(@CurrentTenant() tenantId: string, @Body() createVehicleDto: CreateVehicleDto) {
     return this.vehicleService.create(tenantId, createVehicleDto);
   }
 

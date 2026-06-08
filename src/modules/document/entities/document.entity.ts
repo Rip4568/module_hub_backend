@@ -69,7 +69,7 @@ export class Document extends TenantAwareEntity {
   rejectedReason: string;
 
   @Column({ type: 'json', nullable: true })
-  metadata: any;
+  metadata: Record<string, unknown>;
 
   @CreateDateColumn()
   createdAt: Date;

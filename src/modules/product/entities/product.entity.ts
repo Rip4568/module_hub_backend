@@ -33,7 +33,7 @@ export class Product extends TenantAwareEntity {
   trackInventory: boolean;
 
   @Column({ default: 0 })
-  stock: number;
+  stock: number; // CACHE ONLY. Source of truth is StockLevel entity.
 
   @Column({ nullable: true })
   minStock: number;

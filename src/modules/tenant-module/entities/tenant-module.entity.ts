@@ -1,5 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, Unique } from 'typeorm';
-import { Tenant } from '../../tenant/entities/tenant.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  Relation,
+  Unique,
+} from 'typeorm';
+import type { Tenant } from '../../tenant/entities/tenant.entity';
 
 @Entity('tenant_module')
 @Unique(['tenant', 'moduleId'])
@@ -10,8 +19,8 @@ export class TenantModuleEntity {
   @Column()
   tenantId: string;
 
-  @ManyToOne(() => Tenant, (tenant) => tenant.modules, { onDelete: 'CASCADE' })
-  tenant: Tenant;
+  @ManyToOne('Tenant', 'modules', { onDelete: 'CASCADE' })
+  tenant: Relation<Tenant>;
 
   @Column()
   moduleId: string;

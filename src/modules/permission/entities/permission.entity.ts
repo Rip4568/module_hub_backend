@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToMany,
+  Relation,
+  Unique,
+} from 'typeorm';
 import { RolePermission } from '../../role/entities/role-permission.entity';
 import { UserPermission } from '../../user/entities/user-permission.entity';
 
@@ -32,8 +40,8 @@ export class Permission {
   createdAt: Date;
 
   @OneToMany(() => RolePermission, (rolePermission) => rolePermission.permission)
-  roles: RolePermission[];
+  roles: Relation<RolePermission[]>;
 
   @OneToMany(() => UserPermission, (userPermission) => userPermission.permission)
-  users: UserPermission[];
+  users: Relation<UserPermission[]>;
 }

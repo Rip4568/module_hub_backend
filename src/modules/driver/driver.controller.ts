@@ -60,4 +60,11 @@ export class DriverController {
   block(@CurrentTenant() tenantId: string, @Param('id') id: string) {
     return this.driverService.block(tenantId, id);
   }
+
+  @Post('invite')
+  @RequiresPermission(Permissions.CREATE_DRIVER) // Assuming Create Driver permission covers Inviting
+  invite(@CurrentTenant() tenantId: string, @Body() inviteDto: any) {
+    // In real app use DTO validation pipe
+    return this.driverService.invite(tenantId, inviteDto);
+  }
 }

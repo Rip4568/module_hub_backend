@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { TenantService } from './tenant.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
 @Controller('tenants')
+@UseGuards(JwtAuthGuard)
 export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 

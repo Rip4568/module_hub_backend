@@ -17,16 +17,32 @@ export class TenantGuard implements CanActivate {
       context.getClass(),
     ]);
 
+    if (isPublic) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
-    const tenantId = this.cls.get(RequestContext.TENANT_ID);
+
+    if (!request.user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message: 'User not authenticated',
+        suggestedAction: 'LOGIN',
+      });
+    }
+
+    const tenantId = request.user.tenantId;
 
     if (!tenantId) {
-      throw new ForbiddenException('Tenant context missing');
+      throw new ForbiddenException({
+        code: 'TENANT_REQUIRED',
+        message: 'Tenant ID missing from user context',
+        suggestedAction: 'SELECT_TENANT',
+      });
     }
 
-    if (!isPublic && (!request.user || request.user.tenantId !== tenantId)) {
-      throw new UnauthorizedException('Invalid tenant access');
-    }
+    this.cls.set(RequestContext.TENANT_ID, tenantId);
+    this.cls.set(RequestContext.USER_ID, request.user.userId);
 
     return true;
   }

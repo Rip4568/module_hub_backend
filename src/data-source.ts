@@ -13,7 +13,7 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_DATABASE,
     entities: [__dirname + '/**/*.entity{.ts,.js}'],
     migrations: [__dirname + '/migrations/*{.ts,.js}'],
-    subscribers: [TenantSubscriber],
+    subscribers: [], // Subscriber injected via NestJS
     synchronize: false, // Always false for migrations
     logging: true,
 });
