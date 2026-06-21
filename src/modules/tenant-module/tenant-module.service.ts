@@ -8,11 +8,16 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClsService } from 'nestjs-cls';
+import { RequestContext } from '../../common/context/request.context';
 import { TenantModuleEntity } from './entities/tenant-module.entity';
 import { Role } from '../role/entities/role.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { RoleService } from '../role/role.service';
 import { RoleName } from '../role/enums/role-name.enum';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { DomainEvents, ModuleActivatedPayload } from '../../common/events/domain.events';
 
 @Injectable()
 export class TenantModuleService {
@@ -25,6 +30,8 @@ export class TenantModuleService {
     private roleRepository: Repository<Role>,
     @Inject(forwardRef(() => RoleService))
     private roleService: RoleService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly cls: ClsService,
   ) {}
 
   private readonly ESSENTIAL_MODULES = [
@@ -45,6 +52,8 @@ export class TenantModuleService {
     fleet: 'fleet_management',
     drivers: 'drivers_management',
     reports: 'advanced_reports',
+    documents: 'document',
+    'activity-log': 'activity_log',
   };
   private readonly MAX_MODULES_PER_PLAN = 5;
 
@@ -153,8 +162,18 @@ export class TenantModuleService {
     return tenantModules.some((tenantModule) => tenantModule.isActive);
   }
 
-  async findAll(tenantId: string): Promise<TenantModuleEntity[]> {
-    return this.getNormalizedModules(tenantId);
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<TenantModuleEntity>> {
+    const allModules = await this.getNormalizedModules(tenantId);
+    const total = allModules.length;
+    const start = (page - 1) * limit;
+    const data = allModules.slice(start, start + limit);
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async activateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity> {
@@ -196,6 +215,13 @@ export class TenantModuleService {
     const saved = await this.tenantModuleRepository.save(module);
 
     await this.grantModulePermissionsToAdmin(tenantId, canonicalModuleId);
+
+    const userId = this.cls.get(RequestContext.USER_ID);
+    await this.eventEmitter.emitAsync(DomainEvents.MODULE_ACTIVATED, {
+      tenantId,
+      moduleId: canonicalModuleId,
+      userId,
+    } satisfies ModuleActivatedPayload);
 
     return Array.isArray(saved) ? saved[0] : saved;
   }

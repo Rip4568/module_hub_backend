@@ -1,13 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClsService } from 'nestjs-cls';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { Delivery, DeliveryStatus } from './entities/delivery.entity';
-import { Order } from '../order/entities/order.entity';
-import { Transaction } from '../financial/entities/transaction.entity';
 import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
 import { DeliveryDocument } from './entities/delivery-document.entity';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 describe('DeliveryService', () => {
   let service: DeliveryService;
@@ -17,15 +18,7 @@ describe('DeliveryService', () => {
     findOne: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
-  };
-
-  const orderRepositoryMock = {
-    findOne: jest.fn(),
-  };
-
-  const transactionRepositoryMock = {
-    create: jest.fn(),
-    save: jest.fn(),
+    findAndCount: jest.fn(),
   };
 
   const trackingLogRepositoryMock = {
@@ -39,6 +32,19 @@ describe('DeliveryService', () => {
 
   const dataSourceMock = {
     createQueryRunner: jest.fn(),
+    getRepository: jest.fn(),
+  };
+
+  const activityLogServiceMock = {
+    log: jest.fn(),
+  };
+
+  const eventEmitterMock = {
+    emitAsync: jest.fn(),
+  };
+
+  const clsMock = {
+    get: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -48,11 +54,12 @@ describe('DeliveryService', () => {
       providers: [
         DeliveryService,
         { provide: getRepositoryToken(Delivery), useValue: deliveryRepositoryMock },
-        { provide: getRepositoryToken(Order), useValue: orderRepositoryMock },
-        { provide: getRepositoryToken(Transaction), useValue: transactionRepositoryMock },
         { provide: getRepositoryToken(DeliveryTrackingLog), useValue: trackingLogRepositoryMock },
         { provide: getRepositoryToken(DeliveryDocument), useValue: documentRepositoryMock },
         { provide: DataSource, useValue: dataSourceMock },
+        { provide: ActivityLogService, useValue: activityLogServiceMock },
+        { provide: EventEmitter2, useValue: eventEmitterMock },
+        { provide: ClsService, useValue: clsMock },
       ],
     }).compile();
 
@@ -62,13 +69,13 @@ describe('DeliveryService', () => {
   it('throws NotFoundException when delivery is missing in findOne', async () => {
     deliveryRepositoryMock.findOne.mockResolvedValue(null);
 
-    await expect(service.findOne('delivery-1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findOne('delivery-1', 'tenant-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('throws BadRequestException for invalid status transition input', async () => {
     jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'delivery-1' } as Delivery);
 
-    await expect(service.updateStatus('delivery-1', 'invalid-status')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.updateStatus('delivery-1', 'invalid-status', 'tenant-1')).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('sets startedAt when moving to IN_ROUTE', async () => {
@@ -81,7 +88,7 @@ describe('DeliveryService', () => {
     jest.spyOn(service, 'findOne').mockResolvedValue(delivery);
     deliveryRepositoryMock.save.mockImplementation(async (entity) => entity);
 
-    const updated = await service.updateStatus('delivery-1', 'IN_ROUTE');
+    const updated = await service.updateStatus('delivery-1', 'IN_ROUTE', 'tenant-1');
 
     expect(updated.status).toBe(DeliveryStatus.IN_ROUTE);
     expect(updated.startedAt).toBeInstanceOf(Date);
@@ -98,9 +105,37 @@ describe('DeliveryService', () => {
     jest.spyOn(service, 'findOne').mockResolvedValue(delivery);
     deliveryRepositoryMock.save.mockImplementation(async (entity) => entity);
 
-    const updated = await service.updateStatus('delivery-1', 'COMPLETED');
+    const updated = await service.updateStatus('delivery-1', 'COMPLETED', 'tenant-1');
 
     expect(updated.status).toBe(DeliveryStatus.COMPLETED);
     expect(updated.completedAt).toBeInstanceOf(Date);
+  });
+
+  it('creates independent delivery without driver', async () => {
+    const payload = {
+      tenantId: 'tenant-1',
+      destinationAddress: {
+        street: 'Rua A',
+        number: '100',
+        neighborhood: 'Centro',
+        city: 'SP',
+        state: 'SP',
+        zipCode: '01000',
+        country: 'BR',
+      },
+    };
+    deliveryRepositoryMock.create.mockReturnValue({ ...payload, status: DeliveryStatus.PENDING });
+    deliveryRepositoryMock.save.mockImplementation(async (entity) => entity);
+
+    const result = await service.createIndependent(payload);
+
+    expect(deliveryRepositoryMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        driverId: null,
+        status: DeliveryStatus.PENDING,
+      }),
+    );
+    expect(result.status).toBe(DeliveryStatus.PENDING);
   });
 });

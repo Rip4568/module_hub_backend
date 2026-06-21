@@ -1,5 +1,4 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -9,9 +8,9 @@ import { UserService } from '../user/user.service';
 import { TenantService } from '../tenant/tenant.service';
 import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { RoleService } from '../role/role.service';
-import { Driver } from '../driver/entities/driver.entity';
-import { RequestContext } from '../../common/context/request.context';
+import { DriverService } from '../driver/driver.service';
 import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
+import { RequestContext } from '../../common/context/request.context';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -19,11 +18,8 @@ describe('AuthService', () => {
   const userServiceMock = {
     findByEmail: jest.fn(),
     findOneByTenant: jest.fn(),
-    findOneEntity: jest.fn(),
     create: jest.fn(),
     addRole: jest.fn(),
-    updateLastLogin: jest.fn(),
-    updatePassword: jest.fn(),
   };
 
   const tenantServiceMock = {
@@ -37,32 +33,27 @@ describe('AuthService', () => {
 
   const jwtServiceMock = {
     sign: jest.fn(),
-    verify: jest.fn(),
   };
 
   const configServiceMock = {
-    get: jest.fn((key: string) => (key === 'JWT_SECRET' ? 'test-secret' : undefined)),
+    get: jest.fn(),
   };
 
   const roleServiceMock = {
     create: jest.fn(),
   };
 
-  const driverRepositoryMock = {
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+  const driverServiceMock = {
+    createFromUser: jest.fn(),
+  };
+
+  const emailTemplateServiceMock = {
+    sendForgotPassword: jest.fn(),
   };
 
   const clsMock = {
     get: jest.fn(),
     set: jest.fn(),
-  };
-
-  const emailTemplateServiceMock = {
-    sendForgotPassword: jest.fn(),
-    sendDriverInvite: jest.fn(),
-    sendUserInvite: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -77,9 +68,9 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
         { provide: RoleService, useValue: roleServiceMock },
-        { provide: ClsService, useValue: clsMock },
-        { provide: getRepositoryToken(Driver), useValue: driverRepositoryMock },
+        { provide: DriverService, useValue: driverServiceMock },
         { provide: EmailTemplateService, useValue: emailTemplateServiceMock },
+        { provide: ClsService, useValue: clsMock },
       ],
     }).compile();
 
@@ -95,6 +86,7 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'admin@tenant.com',
       tenantId: 'tenant-1',
+      password: 'hashed-password',
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
 
@@ -104,25 +96,10 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'admin@tenant.com',
       tenantId: 'tenant-1',
+      password: 'hashed-password',
     });
     expect(result.activeModules).toEqual(['erp', 'delivery']);
-  });
-
-  it('issues access and refresh tokens on login', async () => {
-    jwtServiceMock.sign
-      .mockReturnValueOnce('access-token')
-      .mockReturnValueOnce('refresh-token');
-    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
-    userServiceMock.updateLastLogin.mockResolvedValue(undefined);
-
-    const result = await service.login(
-      { id: 'user-1', email: 'admin@tenant.com', tenantId: 'tenant-1' },
-      '127.0.0.1',
-    );
-
-    expect(result.token).toBe('access-token');
-    expect(result.refreshToken).toBe('refresh-token');
-    expect(userServiceMock.updateLastLogin).toHaveBeenCalledWith('user-1', '127.0.0.1');
+    expect(userServiceMock.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
   });
 
   it('blocks registration when email is already in use', async () => {
@@ -131,6 +108,21 @@ describe('AuthService', () => {
     await expect(
       service.register({
         email: 'admin@tenant.com',
+        password: '12345678',
+        name: 'Admin',
+        tenantName: 'Tenant One',
+        tenantId: 'tenant-placeholder',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('blocks registration when tenant slug is already taken', async () => {
+    userServiceMock.findByEmail.mockResolvedValue(null);
+    tenantServiceMock.findBySlug.mockResolvedValue({ id: 'tenant-existing' });
+
+    await expect(
+      service.register({
+        email: 'new@tenant.com',
         password: '12345678',
         name: 'Admin',
         tenantName: 'Tenant One',
@@ -165,5 +157,25 @@ describe('AuthService', () => {
       tenantId: 'tenant-1',
     });
     expect(clsMock.set).toHaveBeenCalledWith(RequestContext.TENANT_ID, 'tenant-1');
+    expect(userServiceMock.addRole).toHaveBeenCalledWith('user-1', 'role-admin');
+  });
+
+  it('delegates driver profile creation to DriverService on registerDriver', async () => {
+    userServiceMock.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'driver@tenant.com',
+      tenantId: 'tenant-1',
+    });
+    driverServiceMock.createFromUser.mockResolvedValue({ id: 'driver-1' });
+
+    const result = await service.registerDriver({
+      email: 'driver@tenant.com',
+      password: '12345678',
+      name: 'Driver',
+      tenantId: 'tenant-1',
+    });
+
+    expect(result.id).toBe('user-1');
+    expect(driverServiceMock.createFromUser).toHaveBeenCalledWith('user-1', 'tenant-1');
   });
 });

@@ -7,9 +7,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
+import { PermissionModule } from '../permission/permission.module';
+import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Customer])],
+    imports: [TypeOrmModule.forFeature([Customer]), PermissionModule, TenantModuleModule],
     controllers: [CustomerController],
     providers: [
         CustomerService,

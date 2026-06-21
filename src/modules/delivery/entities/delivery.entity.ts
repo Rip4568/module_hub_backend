@@ -31,7 +31,7 @@ export class Delivery extends TenantAwareEntity {
   order: Order;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryType,
     default: DeliveryType.STANDARD,
   })
@@ -40,17 +40,17 @@ export class Delivery extends TenantAwareEntity {
   @Column({ nullable: true })
   description: string;
 
-  @Column()
-  driverId: string;
+  @Column({ nullable: true })
+  driverId: string | null;
 
-  @ManyToOne(() => Driver, (driver) => driver.deliveries)
+  @ManyToOne(() => Driver, (driver) => driver.deliveries, { nullable: true })
   driver: Driver;
 
   @Column({ nullable: true })
   vehicleId: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryStatus,
     default: DeliveryStatus.PENDING,
   })

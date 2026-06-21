@@ -7,6 +7,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { UpdateTenantConfigDto } from './dto/update-tenant-config.dto';
+import { Permissions } from '../../common/constants/permissions';
 
 @ApiTags('Tenants')
 @Controller('tenants')
@@ -15,25 +16,25 @@ export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
   @Post()
-  @RequiresPermission('tenant:create')
+  @RequiresPermission(Permissions.CREATE_TENANT)
   create(@Body() createTenantDto: any, @CurrentTenant() tenantId: string) {
     return this.tenantService.create({ ...createTenantDto, tenantId });
   }
 
   @Get()
-  @RequiresPermission('tenant:read')
+  @RequiresPermission(Permissions.READ_TENANT)
   findMyTenant(@CurrentTenant() tenantId: string) {
     return this.tenantService.findMyTenant(tenantId);
   }
 
   @Get(':id')
-  @RequiresPermission('tenant:read')
+  @RequiresPermission(Permissions.READ_TENANT)
   findOne(@Param('id') id: string, @CurrentTenant() tenantId: string) {
     return this.tenantService.findOne(id, tenantId);
   }
 
   @Patch(':id')
-  @RequiresPermission('tenant:update')
+  @RequiresPermission(Permissions.UPDATE_TENANT)
   updateConfig(
     @Param('id') id: string,
     @CurrentTenant() tenantId: string,

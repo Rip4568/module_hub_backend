@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { ProductCategory } from './entities/product-category.entity';
@@ -18,7 +18,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
-import { OrderModule } from '../order/order.module';
+import { OrderInventoryListener } from './listeners/order-inventory.listener';
 
 @Module({
   imports: [
@@ -33,12 +33,12 @@ import { OrderModule } from '../order/order.module';
     ]),
     TenantModuleModule,
     PermissionModule,
-    forwardRef(() => OrderModule)
   ],
   controllers: [ProductController, ProductStorefrontController, InventoryController],
   providers: [
     ProductService,
     InventoryService,
+    OrderInventoryListener,
     {
       provide: getRepositoryToken(Product),
       inject: [DataSource, ClsService],

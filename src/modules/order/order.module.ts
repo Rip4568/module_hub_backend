@@ -1,31 +1,27 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderService } from './order.service';
 import { OrderController } from './order.controller';
+import { OrderStorefrontController } from './order-storefront.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
-import { InventoryLog } from '../product/entities/inventory-log.entity';
 import { Delivery } from '../delivery/entities/delivery.entity';
-import { Transaction } from '../financial/entities/transaction.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
-import { CustomerModule } from '../customer/customer.module';
-import { ProductModule } from '../product/product.module';
+import { ActivityLogModule } from '../activity-log/activity-log.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, InventoryLog, Delivery, Transaction]),
+    TypeOrmModule.forFeature([Order, OrderItem, Delivery]),
     TenantModuleModule,
     PermissionModule,
-    CustomerModule,
-
-    forwardRef(() => ProductModule)
+    ActivityLogModule,
   ],
-  controllers: [OrderController],
+  controllers: [OrderController, OrderStorefrontController],
   providers: [
     OrderService,
     {
@@ -33,13 +29,6 @@ import { ProductModule } from '../product/product.module';
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
         return new TenantRepository(Order, dataSource.manager, dataSource.createQueryRunner(), cls);
-      },
-    },
-    {
-      provide: getRepositoryToken(InventoryLog),
-      inject: [DataSource, ClsService],
-      useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(InventoryLog, dataSource.manager, dataSource.createQueryRunner(), cls);
       },
     },
     {

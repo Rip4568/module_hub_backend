@@ -1,4 +1,6 @@
 import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClsService } from 'nestjs-cls';
 import { Repository } from 'typeorm';
 import { TenantModuleService } from './tenant-module.service';
 import { TenantModuleEntity } from './entities/tenant-module.entity';
@@ -29,6 +31,14 @@ describe('TenantModuleService', () => {
     grantPermissions: jest.fn(),
   };
 
+  const eventEmitterMock = {
+    emitAsync: jest.fn(),
+  };
+
+  const clsMock = {
+    get: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     service = new TenantModuleService(
@@ -36,6 +46,8 @@ describe('TenantModuleService', () => {
       permissionRepositoryMock as unknown as Repository<Permission>,
       roleRepositoryMock as unknown as Repository<Role>,
       roleServiceMock as unknown as RoleService,
+      eventEmitterMock as unknown as EventEmitter2,
+      clsMock as unknown as ClsService,
     );
   });
 

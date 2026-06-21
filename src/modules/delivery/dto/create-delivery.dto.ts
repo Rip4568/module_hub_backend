@@ -8,8 +8,34 @@ export class CreateDeliveryDto {
     orderId?: string;
 
     @IsUUID()
+    @IsOptional()
+    driverId?: string;
+
+    @IsUUID()
+    @IsOptional()
+    vehicleId?: string;
+
+    @IsEnum(DeliveryType)
+    @IsOptional()
+    type?: DeliveryType;
+
+    @IsString()
+    @IsOptional()
+    description?: string;
+
+    @IsObject()
+    @IsOptional()
+    originAddress?: Address;
+
+    @IsObject()
     @IsNotEmpty()
-    driverId: string;
+    destinationAddress: Address;
+}
+
+export class CreateIndependentDeliveryDto {
+    @IsUUID()
+    @IsOptional()
+    driverId?: string;
 
     @IsUUID()
     @IsOptional()

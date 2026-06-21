@@ -20,6 +20,23 @@ export const Permissions = {
     ASSIGN_DRIVER: 'can_assign_driver',
     COMPLETE_ORDER: 'can_complete_order',
 
+    // Customers
+    CREATE_CUSTOMER: 'can_create_customer',
+    READ_CUSTOMER: 'can_read_customer',
+    UPDATE_CUSTOMER: 'can_update_customer',
+    DELETE_CUSTOMER: 'can_delete_customer',
+
+    // Inventory
+    TRANSFER_INVENTORY: 'can_transfer_inventory',
+    ADJUST_INVENTORY: 'can_adjust_inventory',
+    READ_INVENTORY: 'can_read_inventory',
+
+    // Delivery
+    CREATE_DELIVERY: 'can_create_delivery',
+    READ_DELIVERY: 'can_read_delivery',
+    UPDATE_DELIVERY: 'can_update_delivery',
+    COMPLETE_DELIVERY: 'can_complete_delivery',
+
     // Suppliers
     CREATE_SUPPLIER: 'can_create_supplier',
     READ_SUPPLIER: 'can_read_supplier',
@@ -65,6 +82,19 @@ export const Permissions = {
     EXPORT_REPORT: 'can_export_report',
     CREATE_CUSTOM_REPORT: 'can_create_custom_report',
     SCHEDULE_REPORT: 'can_schedule_report',
+
+    // Documents
+    CREATE_DOCUMENT: 'can_create_document',
+    READ_DOCUMENT: 'can_read_document',
+    DELETE_DOCUMENT: 'can_delete_document',
+
+    // Activity Log
+    READ_ACTIVITY_LOG: 'can_read_activity_log',
+
+    // Tenant
+    CREATE_TENANT: 'can_create_tenant',
+    READ_TENANT: 'can_read_tenant',
+    UPDATE_TENANT: 'can_update_tenant',
 } as const;
 
 export type PermissionType = typeof Permissions[keyof typeof Permissions];
