@@ -2,9 +2,10 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } f
 import { Order } from './order.entity';
 import { Product } from '../../product/entities/product.entity';
 import { ProductVariant } from '../../product/entities/product-variant.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 @Entity()
-export class OrderItem {
+export class OrderItem extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

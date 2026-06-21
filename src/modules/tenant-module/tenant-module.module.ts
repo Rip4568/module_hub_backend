@@ -14,7 +14,7 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([TenantModuleEntity, Permission, Role, RolePermission]),
     forwardRef(() => RoleModule),
-    PermissionModule,
+    forwardRef(() => PermissionModule),
   ],
   controllers: [TenantModuleController],
   providers: [TenantModuleService],

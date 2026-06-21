@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ModuleRef } from '@nestjs/core';
 import { Order, OrderStatus } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { Product } from '../product/entities/product.entity';
@@ -9,9 +11,18 @@ import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
 import { ClsService } from 'nestjs-cls';
 import { RequestContext } from '../../common/context/request.context';
 import { Delivery, DeliveryStatus } from '../delivery/entities/delivery.entity';
-import { CustomerService } from '../customer/customer.service';
-import { InventoryService } from '../product/inventory.service';
 import { StockLocationType } from '../product/entities/stock-level.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { TenantModuleService } from '../tenant-module/tenant-module.service';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { DomainEvents, OrderCreatedPayload, OrderStockDeductPayload } from '../../common/events/domain.events';
+
+interface InlineCustomer {
+  email?: string;
+  name?: string;
+  phone?: string;
+  document?: string;
+}
 
 @Injectable()
 export class OrderService {
@@ -22,13 +33,65 @@ export class OrderService {
     private orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
-    private customerService: CustomerService,
     private dataSource: DataSource,
     private readonly cls: ClsService,
-    private readonly inventoryService: InventoryService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly moduleRef: ModuleRef,
+    private readonly tenantModuleService: TenantModuleService,
+    private readonly activityLogService: ActivityLogService,
   ) { }
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
+  private async resolveCustomer(
+    tenantId: string,
+    customer?: InlineCustomer,
+  ): Promise<{
+    customerId?: string;
+    customerName?: string;
+    customerEmail?: string;
+    customerPhone?: string;
+    customerDocument?: string;
+  }> {
+    if (!customer) {
+      return {};
+    }
+
+    const isEcommerceActive = await this.tenantModuleService.isModuleEnabled(tenantId, 'ecommerce');
+
+    if (isEcommerceActive) {
+      try {
+        const { CustomerService } = await import('../customer/customer.service');
+        const customerService = this.moduleRef.get(CustomerService, { strict: false });
+
+        if (customerService && customer.email && customer.name) {
+          const savedCustomer = await customerService.getOrCreate(tenantId, {
+            email: customer.email,
+            name: customer.name,
+            phone: customer.phone,
+            document: customer.document,
+          });
+
+          return {
+            customerId: savedCustomer.id,
+            customerName: savedCustomer.name,
+            customerEmail: savedCustomer.email,
+            customerPhone: savedCustomer.phone,
+            customerDocument: savedCustomer.document,
+          };
+        }
+      } catch {
+        // Customer module not loaded — fall through to inline data
+      }
+    }
+
+    return {
+      customerName: customer.name,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      customerDocument: customer.document,
+    };
+  }
+
+  async create(createOrderDto: CreateOrderDto & { tenantId: string }): Promise<Order> {
     const userId = this.cls.get(RequestContext.USER_ID);
     const { items, ...orderData } = createOrderDto;
 
@@ -37,7 +100,6 @@ export class OrderService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Create Order
       const order = this.orderRepository.create({
         ...orderData,
         createdById: userId,
@@ -45,13 +107,11 @@ export class OrderService {
         orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
       } as Order);
 
-      // Determine Location
       const locationType = orderData.vehicleId ? StockLocationType.VEHICLE : StockLocationType.WAREHOUSE;
       const locationId = orderData.vehicleId;
 
       const savedOrder = await queryRunner.manager.save(order);
 
-      // 2. Process Items & Update Stock (via InventoryService)
       if (items && items.length > 0) {
         let total = 0;
         const orderItems = [];
@@ -67,6 +127,8 @@ export class OrderService {
         const productMap = new Map(products.map(p => [p.id, p]));
         const variantMap = new Map(variants.map(v => [v.id, v]));
 
+        const stockItems: OrderStockDeductPayload['items'] = [];
+
         for (const item of items) {
           const product = productMap.get(item.productId);
           if (!product) throw new NotFoundException(`Product ${item.productId} not found`);
@@ -79,16 +141,11 @@ export class OrderService {
             unitPrice = variant.price ? Number(variant.price) : unitPrice;
           }
 
-          // Deduct Stock via InventoryService (handles StockLevel and InventoryMovement)
-          await this.inventoryService.deductStockForOrder(
-            queryRunner.manager,
-            item.productId,
-            item.variantId || null,
-            item.quantity,
-            locationType,
-            locationId,
-            savedOrder.id
-          );
+          stockItems.push({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
 
           const subtotal = unitPrice * item.quantity;
           total += subtotal;
@@ -106,6 +163,15 @@ export class OrderService {
           orderItems.push(orderItem);
         }
 
+        await this.eventEmitter.emitAsync(DomainEvents.ORDER_STOCK_DEDUCT, {
+          manager: queryRunner.manager,
+          tenantId: createOrderDto.tenantId,
+          orderId: savedOrder.id,
+          items: stockItems,
+          locationType: locationType === StockLocationType.VEHICLE ? 'VEHICLE' : 'WAREHOUSE',
+          locationId,
+        } satisfies OrderStockDeductPayload);
+
         await queryRunner.manager.save(OrderItem, orderItems);
 
         savedOrder.subtotal = total;
@@ -114,7 +180,26 @@ export class OrderService {
       }
 
       await queryRunner.commitTransaction();
-      return this.findOne(savedOrder.id);
+
+      const createdOrder = await this.findOne(savedOrder.id, createOrderDto.tenantId!);
+
+      await this.activityLogService.log({
+        tenantId: createOrderDto.tenantId,
+        userId,
+        action: 'create',
+        resource: 'order',
+        resourceId: savedOrder.id,
+        changes: { orderNumber: savedOrder.orderNumber, status: OrderStatus.PENDING },
+      });
+
+      await this.eventEmitter.emitAsync(DomainEvents.ORDER_CREATED, {
+        tenantId: createOrderDto.tenantId,
+        orderId: savedOrder.id,
+        orderNumber: savedOrder.orderNumber,
+        userId,
+      } satisfies OrderCreatedPayload);
+
+      return createdOrder;
 
     } catch (err) {
       await queryRunner.rollbackTransaction();
@@ -124,41 +209,43 @@ export class OrderService {
     }
   }
 
-  async checkout(tenantId: string, checkoutDto: any): Promise<Order> {
+  async checkout(tenantId: string, checkoutDto: Record<string, unknown>): Promise<Order> {
     const { items, customer, ...orderData } = checkoutDto;
+    const customerData = await this.resolveCustomer(tenantId, customer as InlineCustomer | undefined);
 
-    // 1. Get or Create Customer
-    const savedCustomer = await this.customerService.getOrCreate(tenantId, customer);
-
-    // 2. Map to CreateOrderDto structure and call internal create
     const createOrderDto = {
       ...orderData,
       items,
-      customerName: savedCustomer.name,
-      customerEmail: savedCustomer.email,
-      customerPhone: savedCustomer.phone,
-      customerDocument: savedCustomer.document,
-      customerId: savedCustomer.id,
-      tenantId: tenantId,
+      ...customerData,
+      tenantId,
     };
 
-    // Need to temporarily set tenantId in CLS if not present
     return this.cls.run(async () => {
       this.cls.set(RequestContext.TENANT_ID, tenantId);
-      return this.create(createOrderDto);
+      return this.create(createOrderDto as CreateOrderDto & { tenantId: string });
     });
   }
 
-  async findAll(): Promise<Order[]> {
-    return this.orderRepository.find({
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Order>> {
+    const [data, total] = await this.orderRepository.findAndCount({
+      where: { tenantId },
       relations: ['customer', 'driver', 'vehicle', 'items'],
-      order: { createdAt: 'DESC' }
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
     });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async findOne(id: string): Promise<Order> {
+  async findOne(id: string, tenantId: string): Promise<Order> {
     const order = await this.orderRepository.findOne({
-      where: { id } as any,
+      where: { id, tenantId },
       relations: ['items', 'createdBy', 'delivery', 'customer', 'driver', 'vehicle'],
     });
 
@@ -168,31 +255,30 @@ export class OrderService {
     return order;
   }
 
-  // ... update, cancel, approve methods remain same ...
-
-  async update(id: string, updateOrderDto: UpdateOrderDto): Promise<Order> {
-    const order = await this.findOne(id);
-    this.orderRepository.merge(order, updateOrderDto as any);
+  async update(id: string, updateOrderDto: UpdateOrderDto & { tenantId: string }): Promise<Order> {
+    const { tenantId, ...dto } = updateOrderDto;
+    const order = await this.findOne(id, tenantId);
+    this.orderRepository.merge(order, dto as Partial<Order>);
     return this.orderRepository.save(order);
   }
 
-  async cancel(id: string, reason: string): Promise<Order> {
-    const order = await this.findOne(id);
+  async cancel(id: string, reason: string, tenantId: string): Promise<Order> {
+    const order = await this.findOne(id, tenantId);
     order.status = OrderStatus.CANCELLED;
     order.cancelReason = reason;
     order.cancelledAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async approve(id: string): Promise<Order> {
-    const order = await this.findOne(id);
+  async approve(id: string, tenantId: string): Promise<Order> {
+    const order = await this.findOne(id, tenantId);
     order.status = OrderStatus.ACCEPTED;
     order.acceptedAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async assignResources(id: string, driverId: string, vehicleId?: string): Promise<Order> {
-    const order = await this.findOne(id);
+  async assignResources(id: string, driverId: string, vehicleId: string | undefined, tenantId: string): Promise<Order> {
+    const order = await this.findOne(id, tenantId);
     order.driverId = driverId;
     if (vehicleId) order.vehicleId = vehicleId;
 
@@ -201,17 +287,17 @@ export class OrderService {
     return this.orderRepository.save(order);
   }
 
-  async complete(id: string): Promise<Order> {
-    const order = await this.findOne(id);
+  async complete(id: string, tenantId: string): Promise<Order> {
+    const order = await this.findOne(id, tenantId);
     order.status = OrderStatus.COMPLETED;
     order.completedAt = new Date();
     return this.orderRepository.save(order);
   }
 
-  async dispatch(id: string): Promise<Order> {
-    const order = await this.findOne(id);
+  async dispatch(id: string, tenantId: string): Promise<Order> {
+    const order = await this.findOne(id, tenantId);
     if (order.status !== OrderStatus.ACCEPTED && order.status !== OrderStatus.ASSIGNED) {
-      throw new Error(`Cannot dispatch order in status ${order.status}`);
+      throw new BadRequestException(`Cannot dispatch order in status ${order.status}`);
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -223,7 +309,6 @@ export class OrderService {
       order.inRouteAt = new Date();
       const savedOrder = await queryRunner.manager.save(order);
 
-      // Create Delivery
       const delivery = this.deliveryRepository.create({
         orderId: savedOrder.id,
         tenantId: savedOrder.tenantId,
