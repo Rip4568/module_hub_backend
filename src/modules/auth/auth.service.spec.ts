@@ -10,6 +10,7 @@ import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { RoleService } from '../role/role.service';
 import { DriverService } from '../driver/driver.service';
 import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
+import { PermissionService } from '../permission/permission.service';
 import { RequestContext } from '../../common/context/request.context';
 
 describe('AuthService', () => {
@@ -25,6 +26,7 @@ describe('AuthService', () => {
   const tenantServiceMock = {
     findBySlug: jest.fn(),
     create: jest.fn(),
+    findMyTenant: jest.fn(),
   };
 
   const tenantModuleServiceMock = {
@@ -51,6 +53,11 @@ describe('AuthService', () => {
     sendForgotPassword: jest.fn(),
   };
 
+  const permissionServiceMock = {
+    getUserPermissions: jest.fn(),
+    findAll: jest.fn(),
+  };
+
   const clsMock = {
     get: jest.fn(),
     set: jest.fn(),
@@ -70,6 +77,7 @@ describe('AuthService', () => {
         { provide: RoleService, useValue: roleServiceMock },
         { provide: DriverService, useValue: driverServiceMock },
         { provide: EmailTemplateService, useValue: emailTemplateServiceMock },
+        { provide: PermissionService, useValue: permissionServiceMock },
         { provide: ClsService, useValue: clsMock },
       ],
     }).compile();
@@ -81,25 +89,65 @@ describe('AuthService', () => {
     await expect(service.getCurrentUser('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('returns sanitized user and active modules in getCurrentUser', async () => {
+  it('returns sanitized user, modules, permissions and tenant plan in getCurrentUser', async () => {
     userServiceMock.findOneByTenant.mockResolvedValue({
       id: 'user-1',
       email: 'admin@tenant.com',
+      name: 'Admin',
       tenantId: 'tenant-1',
       password: 'hashed-password',
+      roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
+    permissionServiceMock.getUserPermissions.mockResolvedValue(['can_read_user', 'can_create_user']);
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant One',
+      plan: 'professional',
+    });
 
     const result = await service.getCurrentUser('user-1', 'tenant-1');
 
     expect(result.user).toEqual({
       id: 'user-1',
       email: 'admin@tenant.com',
+      name: 'Admin',
+      role: 'admin',
       tenantId: 'tenant-1',
-      password: 'hashed-password',
+      avatar: undefined,
+      phone: undefined,
     });
     expect(result.activeModules).toEqual(['erp', 'delivery']);
+    expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
+    expect(result.plan).toBe('professional');
+    expect(result.tenant).toEqual({ plan: 'professional', name: 'Tenant One' });
     expect(userServiceMock.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
+  });
+
+  it('expands wildcard permissions for admin users in getCurrentUser', async () => {
+    userServiceMock.findOneByTenant.mockResolvedValue({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+      name: 'Admin',
+      tenantId: 'tenant-1',
+      roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
+    });
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    permissionServiceMock.getUserPermissions.mockResolvedValue(['*']);
+    permissionServiceMock.findAll.mockResolvedValue([
+      { name: 'can_read_user' },
+      { name: 'can_create_user' },
+    ]);
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant One',
+      plan: 'starter',
+    });
+
+    const result = await service.getCurrentUser('user-1', 'tenant-1');
+
+    expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
+    expect(permissionServiceMock.findAll).toHaveBeenCalledWith('tenant-1');
   });
 
   it('blocks registration when email is already in use', async () => {

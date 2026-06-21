@@ -19,6 +19,7 @@ import { RoleService } from '../role/role.service';
 import { RoleName } from '../role/enums/role-name.enum';
 import { DriverService } from '../driver/driver.service';
 import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
+import { PermissionService } from '../permission/permission.service';
 
 interface TokenPayload {
   email: string;
@@ -39,7 +40,34 @@ export class AuthService {
     private driverService: DriverService,
     private readonly cls: ClsService,
     private readonly emailTemplateService: EmailTemplateService,
+    private readonly permissionService: PermissionService,
   ) {}
+
+  private toAuthUser(user: User): Record<string, unknown> {
+    const primaryRole = user.roles?.[0]?.role;
+    const role = primaryRole?.name ?? primaryRole?.displayName ?? 'user';
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role,
+      tenantId: user.tenantId,
+      avatar: user.avatar ?? undefined,
+      phone: user.phone ?? undefined,
+    };
+  }
+
+  private async resolvePermissionSlugs(userId: string, tenantId: string): Promise<string[]> {
+    const permissions = await this.permissionService.getUserPermissions(userId, tenantId);
+
+    if (permissions.includes('*')) {
+      const modulePermissions = await this.permissionService.findAll(tenantId);
+      return modulePermissions.map((permission) => permission.name);
+    }
+
+    return permissions.filter((permission) => permission !== '*');
+  }
 
   private getRefreshSecret(): string {
     const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
@@ -167,11 +195,25 @@ export class AuthService {
     }
 
     const user = await this.userService.findOneByTenant(userId, tenantId);
-    const activeModules = await this.tenantModuleService.getActiveModules(tenantId);
+    const [activeModules, permissions, tenant] = await Promise.all([
+      this.tenantModuleService.getActiveModules(tenantId),
+      this.resolvePermissionSlugs(userId, tenantId),
+      this.tenantService.findMyTenant(tenantId),
+    ]);
+
+    const plan = tenant?.plan ?? null;
 
     return {
-      user,
+      user: this.toAuthUser(user),
       activeModules,
+      permissions,
+      plan,
+      tenant: tenant
+        ? {
+            plan,
+            name: tenant.name,
+          }
+        : undefined,
     };
   }
 

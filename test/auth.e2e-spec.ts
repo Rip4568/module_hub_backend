@@ -50,6 +50,38 @@ describe('AuthController (e2e)', () => {
     expect(refreshResponse.body.user).toBeDefined();
   });
 
+  it('/auth/me (GET) returns user, modules, permissions and tenant plan', async () => {
+    const auth = await authenticateE2EUser(app);
+
+    const response = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Authorization', `Bearer ${auth.token}`)
+      .set('x-tenant-id', auth.tenantId)
+      .expect(200);
+
+    expect(response.body.user).toMatchObject({
+      id: expect.any(String),
+      email: auth.email,
+      tenantId: auth.tenantId,
+    });
+    expect(response.body.user.password).toBeUndefined();
+    expect(Array.isArray(response.body.activeModules)).toBe(true);
+    expect(Array.isArray(response.body.permissions)).toBe(true);
+    expect(response.body.tenant).toBeDefined();
+  });
+
+  it('/auth/forgot-password (POST) accepts tenantId in body', async () => {
+    const auth = await authenticateE2EUser(app);
+
+    await request(app.getHttpServer())
+      .post('/auth/forgot-password')
+      .send({
+        email: auth.email,
+        tenantId: auth.tenantId,
+      })
+      .expect(201);
+  });
+
   it('/auth/refresh (POST) rejects invalid token', async () => {
     await request(app.getHttpServer())
       .post('/auth/refresh')
