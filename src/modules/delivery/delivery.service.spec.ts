@@ -5,7 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClsService } from 'nestjs-cls';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
-import { Delivery, DeliveryStatus } from './entities/delivery.entity';
+import { Delivery, DeliveryStatus, DeliveryType } from './entities/delivery.entity';
 import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
 import { DeliveryDocument } from './entities/delivery-document.entity';
 import { ActivityLogService } from '../activity-log/activity-log.service';
@@ -137,5 +137,56 @@ describe('DeliveryService', () => {
       }),
     );
     expect(result.status).toBe(DeliveryStatus.PENDING);
+  });
+
+  it('creates independent delivery with explicit driver and type', async () => {
+    const payload = {
+      tenantId: 'tenant-1',
+      driverId: 'driver-1',
+      type: DeliveryType.INTERNAL_TRANSFER,
+      destinationAddress: {
+        street: 'Rua B',
+        number: '200',
+        neighborhood: 'Centro',
+        city: 'SP',
+        state: 'SP',
+        zipCode: '01000',
+        country: 'BR',
+      },
+    };
+    deliveryRepositoryMock.create.mockReturnValue({ ...payload, status: DeliveryStatus.PENDING });
+    deliveryRepositoryMock.save.mockImplementation(async (entity) => ({ id: 'delivery-1', ...entity }));
+
+    const result = await service.createIndependent(payload);
+
+    expect(deliveryRepositoryMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        driverId: 'driver-1',
+        type: DeliveryType.INTERNAL_TRANSFER,
+      }),
+    );
+    expect(result.id).toBe('delivery-1');
+  });
+
+  it('defaults independent delivery type to SERVICE when omitted', async () => {
+    deliveryRepositoryMock.create.mockReturnValue({ status: DeliveryStatus.PENDING });
+    deliveryRepositoryMock.save.mockImplementation(async (entity) => entity);
+
+    await service.createIndependent({
+      tenantId: 'tenant-1',
+      destinationAddress: {
+        street: 'Rua C',
+        number: '300',
+        neighborhood: 'Centro',
+        city: 'SP',
+        state: 'SP',
+        zipCode: '01000',
+        country: 'BR',
+      },
+    });
+
+    expect(deliveryRepositoryMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({ type: DeliveryType.SERVICE }),
+    );
   });
 });

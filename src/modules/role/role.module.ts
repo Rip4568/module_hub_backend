@@ -12,7 +12,7 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([Role, RolePermission, Permission]),
     forwardRef(() => TenantModuleModule),
-    PermissionModule
+    forwardRef(() => PermissionModule),
   ],
   controllers: [RoleController],
   providers: [RoleService],

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { DomainEvents, ModuleActivatedPayload } from '../../common/events/domain.events';
+import { DomainEvents, ModuleActivatedPayload } from '../../../common/events/domain.events';
 import { ActivityLogService } from '../activity-log.service';
 
 @Injectable()

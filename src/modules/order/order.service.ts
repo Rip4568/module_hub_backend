@@ -104,7 +104,9 @@ export class OrderService {
         ...orderData,
         createdById: userId,
         status: OrderStatus.PENDING,
-        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        subtotal: 0,
+        total: 0,
       } as Order);
 
       const locationType = orderData.vehicleId ? StockLocationType.VEHICLE : StockLocationType.WAREHOUSE;

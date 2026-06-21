@@ -7,6 +7,7 @@ import { TenantModuleEntity } from './entities/tenant-module.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { Role } from '../role/entities/role.entity';
 import { RoleService } from '../role/role.service';
+import { DomainEvents } from '../../common/events/domain.events';
 
 describe('TenantModuleService', () => {
   let service: TenantModuleService;
@@ -79,5 +80,61 @@ describe('TenantModuleService', () => {
     await expect(service.deactivateModule('tenant-1', 'tenant')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('activates a new module and grants admin permissions', async () => {
+    tenantModuleRepositoryMock.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    tenantModuleRepositoryMock.create.mockImplementation((payload) => payload);
+    tenantModuleRepositoryMock.save.mockImplementation(async (payload) => ({
+      id: 'module-new',
+      ...payload,
+    }));
+    roleRepositoryMock.findOne.mockResolvedValue({ id: 'role-admin', tenantId: 'tenant-1' });
+    permissionRepositoryMock.find.mockResolvedValue([
+      { id: 'perm-1', module: 'document' },
+      { id: 'perm-2', module: 'document' },
+    ]);
+    clsMock.get.mockReturnValue('user-1');
+
+    const result = await service.activateModule('tenant-1', 'documents');
+
+    expect(result.moduleId).toBe('document');
+    expect(result.isActive).toBe(true);
+    expect(roleServiceMock.grantPermissions).toHaveBeenCalledWith('role-admin', ['perm-1', 'perm-2']);
+    expect(eventEmitterMock.emitAsync).toHaveBeenCalledWith(
+      DomainEvents.MODULE_ACTIVATED,
+      expect.objectContaining({ tenantId: 'tenant-1', moduleId: 'document' }),
+    );
+  });
+
+  it('reactivates an existing inactive module without hitting plan limit', async () => {
+    tenantModuleRepositoryMock.find
+      .mockResolvedValueOnce([
+        {
+          id: 'module-existing',
+          tenantId: 'tenant-1',
+          moduleId: 'delivery',
+          isActive: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'module-existing',
+          tenantId: 'tenant-1',
+          moduleId: 'delivery',
+          isActive: false,
+        },
+      ]);
+    tenantModuleRepositoryMock.save.mockImplementation(async (payload) => payload);
+    roleRepositoryMock.findOne.mockResolvedValue({ id: 'role-admin' });
+    permissionRepositoryMock.find.mockResolvedValue([]);
+    clsMock.get.mockReturnValue('user-1');
+
+    const result = await service.activateModule('tenant-1', 'delivery');
+
+    expect(result.isActive).toBe(true);
+    expect(tenantModuleRepositoryMock.create).not.toHaveBeenCalled();
   });
 });

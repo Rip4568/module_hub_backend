@@ -2,14 +2,12 @@ import 'reflect-metadata';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 import { TestHelper } from './test-helper';
 import { TenantModuleService } from '../src/modules/tenant-module/tenant-module.service';
 import { StockLocationType } from '../src/modules/product/entities/stock-level.entity';
-import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
+import { loadOrCreateAuthContext, createE2EApp } from './e2e-auth.helper';
 
 describe('Inventory Flow (e2e)', () => {
     let app: INestApplication;
@@ -21,29 +19,20 @@ describe('Inventory Flow (e2e)', () => {
 
     beforeAll(async () => {
         try {
-            const moduleFixture: TestingModule = await Test.createTestingModule({
-                imports: [AppModule],
-            }).compile();
-
-            app = moduleFixture.createNestApplication();
-            app.useGlobalPipes(new ValidationPipe({ transform: true }));
-            app.useGlobalFilters(new GlobalExceptionFilter());
-            await app.init();
-
+            app = await createE2EApp();
             tenantModuleService = app.get<TenantModuleService>(TenantModuleService);
 
-            token = TestHelper.getEnv<string>('test_token');
-            tenantId = TestHelper.getEnv<string>('test_tenantId');
+            const auth = await loadOrCreateAuthContext(app);
+            token = auth.token;
+            tenantId = auth.tenantId;
             productId = TestHelper.getEnv<string>('test_productId');
             vehicleId = TestHelper.getEnv<string>('test_vehicleId');
 
-            if (!token || !tenantId || !productId || !vehicleId) {
-                console.error({ token: !!token, tenantId: !!tenantId, productId, vehicleId });
-                throw new Error('Test environment variables missing. Run auth, products, and vehicles tests first.');
+            if (!productId || !vehicleId) {
+                throw new Error('Test environment variables missing. Run products and vehicles tests first.');
             }
 
-            // Ensure Modules are Active
-            const modules = ['ecommerce', 'fleet_management'];
+            const modules = ['ecommerce', 'fleet_management', 'inventory'];
             for (const mod of modules) {
                 const isEnabled = await tenantModuleService.isModuleEnabled(tenantId, mod);
                 if (!isEnabled) {
