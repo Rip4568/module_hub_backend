@@ -46,6 +46,7 @@ export async function authenticateE2EUser(app: INestApplication): Promise<E2EAut
     .send({
       email: credentials.email,
       password: credentials.password,
+      tenantId,
     })
     .expect(201);
 

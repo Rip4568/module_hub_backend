@@ -43,6 +43,7 @@ export class AuthController {
     return this.authService.login(user, clientIp);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('refresh')
   async refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refresh(dto.refreshToken);
