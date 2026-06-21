@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UploadedFile, UseInterceptors, UseGuards, Get, Param, Delete, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Post, Body, UploadedFile, UseInterceptors, UseGuards, Get, Param, Delete, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentService } from './document.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -11,6 +11,7 @@ import { RequiresPermission } from '../../common/decorators/requires-permission.
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UploadedDocumentFile } from './interfaces/uploaded-file.interface';
 import { Permissions } from '../../common/constants/permissions';
+import { documentUploadOptions } from './document-upload.config';
 
 @Controller('documents')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
@@ -37,11 +38,13 @@ export class DocumentController {
   }
 
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', documentUploadOptions))
   @RequiresPermission(Permissions.CREATE_DOCUMENT)
   async uploadFile(@CurrentTenant() tenantId: string, @UploadedFile() file: UploadedDocumentFile) {
-      const url = await this.documentService.uploadFile(file, tenantId);
-      return { url };
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    return this.documentService.uploadFile(file, tenantId);
   }
 
   @Get(':id/download')

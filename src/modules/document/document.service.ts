@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { extname } from 'path';
 import { Repository } from 'typeorm';
 import { Document } from './entities/document.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
@@ -56,7 +57,7 @@ export class DocumentService {
     await this.documentRepository.remove(document);
   }
 
-  async uploadFile(file: UploadedDocumentFile, tenantId?: string): Promise<string> {
+  async uploadFile(file: UploadedDocumentFile, tenantId?: string): Promise<Document> {
     if (!file?.buffer) {
       throw new BadRequestException('File buffer is required for upload');
     }
@@ -71,6 +72,18 @@ export class DocumentService {
       file.mimetype,
     );
 
-    return result.url;
+    const extension = extname(file.originalname).replace('.', '').toUpperCase() || 'FILE';
+
+    const document = this.documentRepository.create({
+      tenantId,
+      type: extension,
+      name: file.originalname,
+      fileUrl: result.url,
+      fileSize: result.size ?? file.size,
+      mimeType: file.mimetype,
+      metadata: { originalName: file.originalname },
+    });
+
+    return this.documentRepository.save(document);
   }
 }

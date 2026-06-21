@@ -60,25 +60,33 @@ describe('DocumentService', () => {
     await expect(service.findOne('tenant-1', 'doc-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('uploads file via storage service with tenant scope', async () => {
+  it('uploads file via storage service and creates document record', async () => {
     storageServiceMock.upload.mockResolvedValue({
       key: 'uuid-invoice.pdf',
       url: '/uploads/tenant-1/uuid-invoice.pdf',
       size: 100,
     });
+    documentRepositoryMock.create.mockImplementation((input) => input);
+    documentRepositoryMock.save.mockImplementation(async (input) => ({
+      id: 'doc-1',
+      ...input,
+    }));
 
-    const url = await service.uploadFile(
-      { originalname: '../../../etc/passwd', buffer: Buffer.from('data'), mimetype: 'application/pdf' },
+    const document = await service.uploadFile(
+      { originalname: '../../../etc/passwd', buffer: Buffer.from('data'), mimetype: 'application/pdf', size: 100 },
       'tenant-1',
     );
 
-    expect(url).toBe('/uploads/tenant-1/uuid-invoice.pdf');
+    expect(document.fileUrl).toBe('/uploads/tenant-1/uuid-invoice.pdf');
+    expect(document.name).toBe('../../../etc/passwd');
+    expect(document.tenantId).toBe('tenant-1');
     expect(storageServiceMock.upload).toHaveBeenCalledWith(
       'tenant-1',
       '../../../etc/passwd',
       expect.any(Buffer),
       'application/pdf',
     );
+    expect(documentRepositoryMock.save).toHaveBeenCalled();
   });
 
   it('throws when file buffer is missing', async () => {

@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClsService } from 'nestjs-cls';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DeliveryService } from './delivery.service';
 import { Delivery, DeliveryStatus, DeliveryType } from './entities/delivery.entity';
 import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
@@ -47,6 +48,10 @@ describe('DeliveryService', () => {
     get: jest.fn(),
   };
 
+  const configServiceMock = {
+    get: jest.fn().mockReturnValue('/uploads'),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -60,6 +65,7 @@ describe('DeliveryService', () => {
         { provide: ActivityLogService, useValue: activityLogServiceMock },
         { provide: EventEmitter2, useValue: eventEmitterMock },
         { provide: ClsService, useValue: clsMock },
+        { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
@@ -188,5 +194,37 @@ describe('DeliveryService', () => {
     expect(deliveryRepositoryMock.create).toHaveBeenCalledWith(
       expect.objectContaining({ type: DeliveryType.SERVICE }),
     );
+  });
+
+  it('rejects external URLs when uploading delivery document', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'delivery-1', tenantId: 'tenant-1' } as Delivery);
+
+    await expect(
+      service.uploadDocument(
+        'delivery-1',
+        { type: 'PHOTO' as never, url: 'https://evil.example/photo.jpg' },
+        'driver-1',
+        'tenant-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('accepts internal storage URLs when uploading delivery document', async () => {
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      id: 'delivery-1',
+      tenantId: 'tenant-1',
+      driverId: 'driver-1',
+    } as Delivery);
+    documentRepositoryMock.create.mockImplementation((input) => input);
+    documentRepositoryMock.save.mockImplementation(async (input) => ({ id: 'doc-1', ...input }));
+
+    const result = await service.uploadDocument(
+      'delivery-1',
+      { type: 'PHOTO' as never, url: '/uploads/tenant-1/photo.jpg' },
+      'driver-1',
+      'tenant-1',
+    );
+
+    expect(result.url).toBe('/uploads/tenant-1/photo.jpg');
   });
 });
