@@ -106,6 +106,10 @@ export class ProductService {
       .leftJoinAndSelect('pc.category', 'category')
       .where('ecommerce.status = :status', { status: EcommerceStatus.PUBLISHED });
 
+    if (query.tenantId) {
+      qb.andWhere('product.tenantId = :tenantId', { tenantId: query.tenantId });
+    }
+
     // Performance & Security: Select only necessary public fields
     qb.select([
       'product.id',
