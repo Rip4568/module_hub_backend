@@ -31,8 +31,15 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Req() req: { ip?: string; headers?: Record<string, string> }) {
-    const user = await this.authService.validateUser(loginDto.email, loginDto.password, loginDto.tenantId);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() req: { ip?: string; headers?: Record<string, string> },
+  ) {
+    const user = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.password,
+      loginDto.tenantId,
+    );
     if (!user) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',

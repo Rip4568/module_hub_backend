@@ -11,18 +11,23 @@ import { PermissionModule } from '../permission/permission.module';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([Customer]), PermissionModule, TenantModuleModule],
-    controllers: [CustomerController],
-    providers: [
-        CustomerService,
-        {
-            provide: getRepositoryToken(Customer),
-            inject: [DataSource, ClsService],
-            useFactory: (dataSource: DataSource, cls: ClsService) => {
-                return new TenantRepository(Customer, dataSource.manager, dataSource.createQueryRunner(), cls);
-            },
-        },
-    ],
-    exports: [CustomerService],
+  imports: [TypeOrmModule.forFeature([Customer]), PermissionModule, TenantModuleModule],
+  controllers: [CustomerController],
+  providers: [
+    CustomerService,
+    {
+      provide: getRepositoryToken(Customer),
+      inject: [DataSource, ClsService],
+      useFactory: (dataSource: DataSource, cls: ClsService) => {
+        return new TenantRepository(
+          Customer,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
+      },
+    },
+  ],
+  exports: [CustomerService],
 })
-export class CustomerModule { }
+export class CustomerModule {}

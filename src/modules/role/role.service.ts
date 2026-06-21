@@ -16,7 +16,7 @@ export class RoleService {
     private rolePermissionRepository: Repository<RolePermission>,
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
-  ) { }
+  ) {}
 
   async create(tenantId: string, createRoleDto: any): Promise<Role> {
     const role = this.roleRepository.create({
@@ -47,7 +47,7 @@ export class RoleService {
   async findOne(tenantId: string, id: string): Promise<Role> {
     const role = await this.roleRepository.findOne({
       where: { id, tenantId },
-      relations: ['permissions', 'permissions.permission']
+      relations: ['permissions', 'permissions.permission'],
     });
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
@@ -64,7 +64,7 @@ export class RoleService {
   async remove(tenantId: string, id: string): Promise<void> {
     const role = await this.findOne(tenantId, id);
     if (role.isSystem) {
-      throw new ForbiddenException("Cannot delete system role");
+      throw new ForbiddenException('Cannot delete system role');
     }
     await this.roleRepository.remove(role);
   }
@@ -78,12 +78,12 @@ export class RoleService {
       if (permission) {
         // Check if already exists
         const existing = await this.rolePermissionRepository.findOne({
-          where: { roleId, permissionId: permission.id }
+          where: { roleId, permissionId: permission.id },
         });
         if (!existing) {
           const rolePermission = this.rolePermissionRepository.create({
             roleId,
-            permissionId: permission.id
+            permissionId: permission.id,
           } as RolePermission);
           await this.rolePermissionRepository.save(rolePermission);
         }
@@ -92,7 +92,11 @@ export class RoleService {
     return this.findOne(tenantId, roleId);
   }
 
-  async removePermissions(tenantId: string, roleId: string, permissionNames: string[]): Promise<Role> {
+  async removePermissions(
+    tenantId: string,
+    roleId: string,
+    permissionNames: string[],
+  ): Promise<Role> {
     const role = await this.findOne(tenantId, roleId);
 
     for (const name of permissionNames) {
@@ -112,21 +116,22 @@ export class RoleService {
     if (!permissionIds.length) return;
 
     // 1. Find existing grants for this role and these permissions
-    const existingGrants = await this.rolePermissionRepository.createQueryBuilder('rp')
+    const existingGrants = await this.rolePermissionRepository
+      .createQueryBuilder('rp')
       .where('rp.roleId = :roleId', { roleId })
       .andWhere('rp.permissionId IN (:...permissionIds)', { permissionIds })
       .getMany();
 
-    const existingPermissionIds = new Set(existingGrants.map(rp => rp.permissionId));
+    const existingPermissionIds = new Set(existingGrants.map((rp) => rp.permissionId));
 
     // 2. Filter out already granted permissions
-    const newPermissionIds = permissionIds.filter(id => !existingPermissionIds.has(id));
+    const newPermissionIds = permissionIds.filter((id) => !existingPermissionIds.has(id));
 
     if (newPermissionIds.length === 0) return;
 
     // 3. Bulk Insert
-    const newGrants = newPermissionIds.map(permissionId =>
-      this.rolePermissionRepository.create({ roleId, permissionId })
+    const newGrants = newPermissionIds.map((permissionId) =>
+      this.rolePermissionRepository.create({ roleId, permissionId }),
     );
 
     await this.rolePermissionRepository.save(newGrants);

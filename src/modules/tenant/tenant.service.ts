@@ -9,7 +9,7 @@ export class TenantService {
   constructor(
     @InjectRepository(Tenant)
     private tenantRepository: Repository<Tenant>,
-  ) { }
+  ) {}
 
   async create(createTenantDto: any): Promise<Tenant> {
     const tenant = this.tenantRepository.create(createTenantDto as unknown as Tenant);

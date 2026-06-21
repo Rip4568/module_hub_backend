@@ -10,17 +10,15 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 @UseGuards(TenantGuard, ModuleGuard)
 @RequiresModule('ecommerce')
 export class ProductStorefrontController {
-    constructor(
-        private readonly productService: ProductService,
-    ) { }
+  constructor(private readonly productService: ProductService) {}
 
-    @Get()
-    findAllPublic(@Param('tenantId') tenantId: string, @Query() query: Record<string, unknown>) {
-        return this.productService.findAllPublic({ ...query, tenantId });
-    }
+  @Get()
+  findAllPublic(@Param('tenantId') tenantId: string, @Query() query: Record<string, unknown>) {
+    return this.productService.findAllPublic({ ...query, tenantId });
+  }
 
-    @Get(':slug')
-    findOnePublicBySlug(@Param('tenantId') tenantId: string, @Param('slug') slug: string) {
-        return this.productService.findOnePublicBySlug(slug, tenantId);
-    }
+  @Get(':slug')
+  findOnePublicBySlug(@Param('tenantId') tenantId: string, @Param('slug') slug: string) {
+    return this.productService.findOnePublicBySlug(slug, tenantId);
+  }
 }

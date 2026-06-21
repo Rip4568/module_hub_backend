@@ -17,7 +17,11 @@ export class ActivityLogController {
 
   @Get()
   @RequiresPermission(Permissions.READ_ACTIVITY_LOG)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.activityLogService.findAll(tenantId, page, limit);
   }
 

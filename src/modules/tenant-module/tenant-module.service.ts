@@ -165,7 +165,11 @@ export class TenantModuleService {
     return tenantModules.some((tenantModule) => tenantModule.isActive);
   }
 
-  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<TenantModuleEntity>> {
+  async findAll(
+    tenantId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<TenantModuleEntity>> {
     const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [rawData, total] = await this.tenantModuleRepository.findAndCount({
       where: { tenantId },
@@ -185,9 +189,7 @@ export class TenantModuleService {
     };
   }
 
-  private deduplicatePageByCanonicalModule(
-    records: TenantModuleEntity[],
-  ): TenantModuleEntity[] {
+  private deduplicatePageByCanonicalModule(records: TenantModuleEntity[]): TenantModuleEntity[] {
     const seen = new Map<string, TenantModuleEntity>();
 
     for (const record of records) {

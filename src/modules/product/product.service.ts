@@ -22,7 +22,7 @@ export class ProductService {
     @InjectRepository(ProductEcommerceProfile)
     private ecommerceRepository: Repository<ProductEcommerceProfile>,
     private readonly cls: ClsService,
-  ) { }
+  ) {}
 
   async create(createProductDto: any): Promise<Product> {
     const { categories, variants, ecommerce, ...productData } = createProductDto;
@@ -40,24 +40,31 @@ export class ProductService {
 
     if (categories && categories.length > 0) {
       const productCategories = categories.map((catId: string) =>
-        this.productCategoryRepository.create({ productId: savedProduct.id, categoryId: catId } as ProductCategory)
+        this.productCategoryRepository.create({
+          productId: savedProduct.id,
+          categoryId: catId,
+        } as ProductCategory),
       );
       await this.productCategoryRepository.save(productCategories);
     }
 
     if (variants && variants.length > 0) {
       const productVariants = variants.map((variant: any) =>
-        this.variantRepository.create({ ...variant, productId: savedProduct.id } as ProductVariant)
+        this.variantRepository.create({ ...variant, productId: savedProduct.id } as ProductVariant),
       );
       await this.variantRepository.save(productVariants);
     }
 
-    return this.findOne(savedProduct.id, { withEcommerce: !!ecommerce, tenantId: savedProduct.tenantId });
+    return this.findOne(savedProduct.id, {
+      withEcommerce: !!ecommerce,
+      tenantId: savedProduct.tenantId,
+    });
   }
 
   async findAll(query: any = {}): Promise<PaginatedResult<Product>> {
     const { page: safePage, limit: safeLimit, skip } = normalizePagination(query.page, query.limit);
-    const qb = this.productRepository.createQueryBuilder('product')
+    const qb = this.productRepository
+      .createQueryBuilder('product')
       .leftJoinAndSelect('product.categories', 'pc')
       .leftJoinAndSelect('pc.category', 'category');
 
@@ -79,10 +86,19 @@ export class ProductService {
       .take(safeLimit)
       .getManyAndCount();
 
-    return { data, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
-  async findOne(id: string, options: { withEcommerce?: boolean; tenantId: string }): Promise<Product> {
+  async findOne(
+    id: string,
+    options: { withEcommerce?: boolean; tenantId: string },
+  ): Promise<Product> {
     const relations = ['categories', 'categories.category', 'variants'];
     if (options.withEcommerce) {
       relations.push('ecommerceProfile');
@@ -100,7 +116,8 @@ export class ProductService {
   }
 
   async findAllPublic(query: any = {}): Promise<Product[]> {
-    const qb = this.productRepository.createQueryBuilder('product')
+    const qb = this.productRepository
+      .createQueryBuilder('product')
       .leftJoinAndSelect('product.ecommerceProfile', 'ecommerce')
       .leftJoinAndSelect('product.categories', 'pc')
       .leftJoinAndSelect('pc.category', 'category')
@@ -119,14 +136,15 @@ export class ProductService {
       'product.stock',
       'ecommerce',
       'pc',
-      'category'
+      'category',
     ]);
 
     return qb.getMany();
   }
 
   async findOnePublicBySlug(slug: string, tenantId?: string): Promise<Product> {
-    const qb = this.productRepository.createQueryBuilder('product')
+    const qb = this.productRepository
+      .createQueryBuilder('product')
       .leftJoinAndSelect('product.ecommerceProfile', 'ecommerce')
       .leftJoinAndSelect('product.categories', 'pc')
       .leftJoinAndSelect('pc.category', 'category')
@@ -147,7 +165,7 @@ export class ProductService {
       'ecommerce',
       'pc',
       'category',
-      'variant'
+      'variant',
     ]);
 
     const product = await qb.getOne();
@@ -159,7 +177,10 @@ export class ProductService {
   }
 
   async update(id: string, updateProductDto: any): Promise<Product> {
-    const product = await this.findOne(id, { withEcommerce: true, tenantId: updateProductDto.tenantId });
+    const product = await this.findOne(id, {
+      withEcommerce: true,
+      tenantId: updateProductDto.tenantId,
+    });
     const { categories, variants, ecommerce, ...productData } = updateProductDto;
 
     this.productRepository.merge(product, productData);
@@ -181,12 +202,18 @@ export class ProductService {
     if (categories) {
       await this.productCategoryRepository.delete({ productId: id });
       const productCategories = categories.map((catId: string) =>
-        this.productCategoryRepository.create({ productId: id, categoryId: catId } as ProductCategory)
+        this.productCategoryRepository.create({
+          productId: id,
+          categoryId: catId,
+        } as ProductCategory),
       );
       await this.productCategoryRepository.save(productCategories);
     }
 
-    return this.findOne(id, { withEcommerce: !!ecommerce || !!product.ecommerceProfile, tenantId: product.tenantId });
+    return this.findOne(id, {
+      withEcommerce: !!ecommerce || !!product.ecommerceProfile,
+      tenantId: product.tenantId,
+    });
   }
 
   async remove(id: string, tenantId: string): Promise<void> {

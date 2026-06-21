@@ -102,8 +102,6 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(ClsMiddleware, TenantContextMiddleware)
-      .forRoutes('*');
+    consumer.apply(ClsMiddleware, TenantContextMiddleware).forRoutes('*');
   }
 }

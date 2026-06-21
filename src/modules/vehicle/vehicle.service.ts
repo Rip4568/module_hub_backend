@@ -60,17 +60,18 @@ export class VehicleService {
   }
 
   async approve(tenantId: string, id: string): Promise<Vehicle> {
-      const vehicle = await this.findOne(tenantId, id);
-      // Assuming 'ACTIVE' implies approved in this simple status flow
-      vehicle.status = VehicleStatus.ACTIVE;
-      return this.vehicleRepository.save(vehicle);
+    const vehicle = await this.findOne(tenantId, id);
+    // Assuming 'ACTIVE' implies approved in this simple status flow
+    vehicle.status = VehicleStatus.ACTIVE;
+    return this.vehicleRepository.save(vehicle);
   }
 
   async setMaintenance(tenantId: string, id: string): Promise<Vehicle> {
-      const vehicle = await this.findOne(tenantId, id);
-      vehicle.status = vehicle.status === VehicleStatus.MAINTENANCE
+    const vehicle = await this.findOne(tenantId, id);
+    vehicle.status =
+      vehicle.status === VehicleStatus.MAINTENANCE
         ? VehicleStatus.ACTIVE
         : VehicleStatus.MAINTENANCE;
-      return this.vehicleRepository.save(vehicle);
+    return this.vehicleRepository.save(vehicle);
   }
 }

@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Vehicle } from '../../vehicle/entities/vehicle.entity';

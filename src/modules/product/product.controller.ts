@@ -17,7 +17,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('ecommerce')
 export class ProductController {
-  constructor(private readonly productService: ProductService) { }
+  constructor(private readonly productService: ProductService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PRODUCT)
@@ -27,13 +27,22 @@ export class ProductController {
 
   @Get()
   @RequiresPermission(Permissions.READ_PRODUCT)
-  findAll(@CurrentTenant() tenantId: string, @Query() query: any, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query() query: any,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.productService.findAll({ ...query, tenantId, page, limit });
   }
 
   @Get(':id')
   @RequiresPermission(Permissions.READ_PRODUCT)
-  findOne(@CurrentTenant() tenantId: string, @Param('id') id: string, @Query('withEcommerce') withEcommerce: string) {
+  findOne(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Query('withEcommerce') withEcommerce: string,
+  ) {
     return this.productService.findOne(id, { withEcommerce: withEcommerce === 'true', tenantId });
   }
 

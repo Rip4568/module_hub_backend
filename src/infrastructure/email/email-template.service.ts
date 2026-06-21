@@ -44,7 +44,11 @@ export class EmailTemplateService {
     });
   }
 
-  async sendForgotPassword(params: { to: string; name: string; resetToken: string }): Promise<void> {
+  async sendForgotPassword(params: {
+    to: string;
+    name: string;
+    resetToken: string;
+  }): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password?token=${params.resetToken}`;
 

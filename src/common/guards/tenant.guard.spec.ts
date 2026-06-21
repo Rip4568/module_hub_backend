@@ -28,28 +28,44 @@ describe('TenantGuard', () => {
 
   it('allows public routes', async () => {
     reflectorMock.getAllAndOverride.mockReturnValue(true);
-    const guard = new TenantGuard(reflectorMock as unknown as Reflector, clsMock as unknown as ClsService);
+    const guard = new TenantGuard(
+      reflectorMock as unknown as Reflector,
+      clsMock as unknown as ClsService,
+    );
 
     await expect(guard.canActivate(createContext({}))).resolves.toBe(true);
   });
 
   it('throws UnauthorizedException when user is missing', async () => {
     reflectorMock.getAllAndOverride.mockReturnValue(false);
-    const guard = new TenantGuard(reflectorMock as unknown as Reflector, clsMock as unknown as ClsService);
+    const guard = new TenantGuard(
+      reflectorMock as unknown as Reflector,
+      clsMock as unknown as ClsService,
+    );
 
-    await expect(guard.canActivate(createContext({}))).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.canActivate(createContext({}))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('throws ForbiddenException when tenant id is missing in user payload', async () => {
     reflectorMock.getAllAndOverride.mockReturnValue(false);
-    const guard = new TenantGuard(reflectorMock as unknown as Reflector, clsMock as unknown as ClsService);
+    const guard = new TenantGuard(
+      reflectorMock as unknown as Reflector,
+      clsMock as unknown as ClsService,
+    );
 
-    await expect(guard.canActivate(createContext({ user: { userId: 'user-1' } }))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      guard.canActivate(createContext({ user: { userId: 'user-1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('stores tenant and user ids in CLS when payload is valid', async () => {
     reflectorMock.getAllAndOverride.mockReturnValue(false);
-    const guard = new TenantGuard(reflectorMock as unknown as Reflector, clsMock as unknown as ClsService);
+    const guard = new TenantGuard(
+      reflectorMock as unknown as Reflector,
+      clsMock as unknown as ClsService,
+    );
 
     await expect(
       guard.canActivate(createContext({ user: { userId: 'user-1', tenantId: 'tenant-1' } })),

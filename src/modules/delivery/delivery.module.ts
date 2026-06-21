@@ -27,24 +27,39 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
       provide: getRepositoryToken(Delivery),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(Delivery, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          Delivery,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(DeliveryTrackingLog),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(DeliveryTrackingLog, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          DeliveryTrackingLog,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(DeliveryDocument),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(DeliveryDocument, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          DeliveryDocument,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
   ],
   exports: [DeliveryService],
 })
-export class DeliveryModule { }
+export class DeliveryModule {}

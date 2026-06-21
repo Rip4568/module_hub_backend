@@ -146,9 +146,7 @@ describe('OrderService', () => {
       tenantId: 'tenant-1',
       customerName: 'Customer',
     });
-    queryRunnerMock.manager.find
-      .mockResolvedValueOnce([product])
-      .mockResolvedValueOnce([]);
+    queryRunnerMock.manager.find.mockResolvedValueOnce([product]).mockResolvedValueOnce([]);
     orderItemRepositoryMock.create.mockImplementation((item) => item);
     orderRepositoryMock.findOne.mockResolvedValue({
       id: 'order-1',

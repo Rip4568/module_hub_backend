@@ -23,4 +23,4 @@ import { EmailModule } from '../../infrastructure/email/email.module';
   providers: [DriverService],
   exports: [DriverService],
 })
-export class DriverModule { }
+export class DriverModule {}

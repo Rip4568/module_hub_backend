@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Unique,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Driver } from '../../driver/entities/driver.entity';

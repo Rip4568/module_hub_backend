@@ -44,7 +44,9 @@ describe('PermissionGuard', () => {
       permissionServiceMock as unknown as PermissionService,
     );
 
-    await expect(guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } }))).resolves.toBe(true);
+    await expect(
+      guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } })),
+    ).resolves.toBe(true);
   });
 
   it('throws UnauthorizedException when user is missing', async () => {
@@ -55,7 +57,9 @@ describe('PermissionGuard', () => {
       permissionServiceMock as unknown as PermissionService,
     );
 
-    await expect(guard.canActivate(createContext({}))).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(guard.canActivate(createContext({}))).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 
   it('throws ForbiddenException when tenant context is missing', async () => {
@@ -66,7 +70,9 @@ describe('PermissionGuard', () => {
       permissionServiceMock as unknown as PermissionService,
     );
 
-    await expect(guard.canActivate(createContext({ user: { userId: 'u1' } }))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      guard.canActivate(createContext({ user: { userId: 'u1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('delegates permission check to PermissionService', async () => {
@@ -78,8 +84,12 @@ describe('PermissionGuard', () => {
       permissionServiceMock as unknown as PermissionService,
     );
 
-    await expect(guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } }))).resolves.toBe(true);
-    expect(permissionServiceMock.userHasPermissions).toHaveBeenCalledWith('u1', 't1', ['perm.read']);
+    await expect(
+      guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } })),
+    ).resolves.toBe(true);
+    expect(permissionServiceMock.userHasPermissions).toHaveBeenCalledWith('u1', 't1', [
+      'perm.read',
+    ]);
   });
 
   it('throws ForbiddenException when user lacks required permission', async () => {
@@ -91,6 +101,8 @@ describe('PermissionGuard', () => {
       permissionServiceMock as unknown as PermissionService,
     );
 
-    await expect(guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } }))).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      guard.canActivate(createContext({ user: { userId: 'u1', tenantId: 't1' } })),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

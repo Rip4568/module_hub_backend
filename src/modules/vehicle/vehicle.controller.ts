@@ -17,7 +17,7 @@ import { CreateVehicleDto } from './dto/create-vehicle.dto';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('fleet_management')
 export class VehicleController {
-  constructor(private readonly vehicleService: VehicleService) { }
+  constructor(private readonly vehicleService: VehicleService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_VEHICLE)
@@ -27,7 +27,11 @@ export class VehicleController {
 
   @Get()
   @RequiresPermission(Permissions.READ_VEHICLE)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.vehicleService.findAll(tenantId, page, limit);
   }
 

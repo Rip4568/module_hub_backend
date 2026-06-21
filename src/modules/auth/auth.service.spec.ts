@@ -99,7 +99,10 @@ describe('AuthService', () => {
       roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
-    permissionServiceMock.getUserPermissions.mockResolvedValue(['can_read_user', 'can_create_user']);
+    permissionServiceMock.getUserPermissions.mockResolvedValue([
+      'can_read_user',
+      'can_create_user',
+    ]);
     tenantServiceMock.findMyTenant.mockResolvedValue({
       id: 'tenant-1',
       name: 'Tenant One',

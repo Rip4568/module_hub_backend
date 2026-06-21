@@ -20,18 +20,23 @@ export class CategoryService {
     return this.categoryRepository.save(category);
   }
 
-  async findAll(tenantId: string, type?: string, page = 1, limit = 20): Promise<PaginatedResult<Category>> {
+  async findAll(
+    tenantId: string,
+    type?: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<Category>> {
     const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const where: any = { tenantId };
     if (type) {
       where.type = type;
     }
     const [data, total] = await this.categoryRepository.findAndCount({
-        where,
-        relations: ['children', 'parent'],
-        skip,
-        take: safeLimit,
-        order: { createdAt: 'DESC' },
+      where,
+      relations: ['children', 'parent'],
+      skip,
+      take: safeLimit,
+      order: { createdAt: 'DESC' },
     });
     return {
       data,

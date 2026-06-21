@@ -14,9 +14,12 @@ export class OrganizationService {
     private organizationRepository: Repository<Organization>,
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
-  ) { }
+  ) {}
 
-  async create(tenantId: string, createOrganizationDto: CreateOrganizationDto): Promise<Organization> {
+  async create(
+    tenantId: string,
+    createOrganizationDto: CreateOrganizationDto,
+  ): Promise<Organization> {
     const organization = this.organizationRepository.create({
       ...(createOrganizationDto as any),
       tenantId,
@@ -55,7 +58,11 @@ export class OrganizationService {
     return organization;
   }
 
-  async update(tenantId: string, id: string, updateOrganizationDto: UpdateOrganizationDto): Promise<Organization> {
+  async update(
+    tenantId: string,
+    id: string,
+    updateOrganizationDto: UpdateOrganizationDto,
+  ): Promise<Organization> {
     const organization = await this.findOne(tenantId, id);
     this.organizationRepository.merge(organization, updateOrganizationDto);
     const saved = await this.organizationRepository.save(organization);

@@ -5,10 +5,7 @@ import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 
 @Module({
-  imports: [
-    TenantModuleModule,
-    PermissionModule
-  ],
+  imports: [TenantModuleModule, PermissionModule],
   controllers: [ReportController],
   providers: [ReportService],
 })

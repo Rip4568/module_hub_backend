@@ -15,7 +15,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('multi_organization')
 export class OrganizationController {
-  constructor(private readonly organizationService: OrganizationService) { }
+  constructor(private readonly organizationService: OrganizationService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_SUPPLIER) // Using supplier permissions as example from prompt, or generic organization ones
@@ -25,7 +25,11 @@ export class OrganizationController {
 
   @Get()
   @RequiresPermission(Permissions.READ_SUPPLIER)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.organizationService.findAll(tenantId, page, limit);
   }
 

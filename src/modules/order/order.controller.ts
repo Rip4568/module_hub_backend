@@ -16,7 +16,7 @@ import { CreateOrderDto, UpdateOrderDto } from './dto/create-order.dto';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('order_management')
 export class OrderController {
-  constructor(private readonly orderService: OrderService) { }
+  constructor(private readonly orderService: OrderService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_ORDER)
@@ -26,7 +26,11 @@ export class OrderController {
 
   @Get()
   @RequiresPermission(Permissions.READ_ORDER)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.orderService.findAll(tenantId, page, limit);
   }
 
@@ -48,7 +52,11 @@ export class OrderController {
 
   @Post(':id/cancel')
   @RequiresPermission(Permissions.CANCEL_ORDER)
-  cancel(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body('reason') reason: string) {
+  cancel(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+  ) {
     return this.orderService.cancel(id, reason, tenantId);
   }
 
@@ -60,7 +68,11 @@ export class OrderController {
 
   @Post(':id/assign')
   @RequiresPermission(Permissions.ASSIGN_DRIVER)
-  assignResources(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { driverId: string, vehicleId?: string }) {
+  assignResources(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { driverId: string; vehicleId?: string },
+  ) {
     if (!body.driverId) throw new Error('Driver ID is required');
     return this.orderService.assignResources(id, body.driverId, body.vehicleId, tenantId);
   }

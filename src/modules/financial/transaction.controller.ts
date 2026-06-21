@@ -16,7 +16,7 @@ import { CreateTransactionDto } from './dto/create-transaction.dto';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')
 export class TransactionController {
-  constructor(private readonly transactionService: TransactionService) { }
+  constructor(private readonly transactionService: TransactionService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PAYMENT)
@@ -26,7 +26,11 @@ export class TransactionController {
 
   @Get()
   @RequiresPermission(Permissions.READ_FINANCIAL)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.transactionService.findAll(tenantId, page, limit);
   }
 

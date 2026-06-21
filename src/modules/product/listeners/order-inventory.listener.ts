@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import {
-  DomainEvents,
-  OrderStockDeductPayload,
-} from '../../../common/events/domain.events';
+import { DomainEvents, OrderStockDeductPayload } from '../../../common/events/domain.events';
 import { InventoryService } from '../inventory.service';
 import { StockLocationType } from '../entities/stock-level.entity';
 import { TenantModuleService } from '../../tenant-module/tenant-module.service';
@@ -27,9 +24,7 @@ export class OrderInventoryListener {
     }
 
     const locationType =
-      payload.locationType === 'VEHICLE'
-        ? StockLocationType.VEHICLE
-        : StockLocationType.WAREHOUSE;
+      payload.locationType === 'VEHICLE' ? StockLocationType.VEHICLE : StockLocationType.WAREHOUSE;
 
     for (const item of payload.items) {
       await this.inventoryService.deductStockForOrder(

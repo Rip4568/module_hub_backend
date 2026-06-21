@@ -125,11 +125,7 @@ export class UserService {
     return `${randomPart}Aa1!`;
   }
 
-  async findAllByTenant(
-    tenantId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<PaginatedResult<User>> {
+  async findAllByTenant(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<User>> {
     const maxLimit = 100;
     const safePage = Math.max(1, Number(page) || 1);
     const safeLimit = Math.min(maxLimit, Math.max(1, Number(limit) || 20));
@@ -249,7 +245,12 @@ export class UserService {
     await this.userRepository.update(userId, { password: hashed });
   }
 
-  async invite(tenantId: string, email: string, name: string, role?: string): Promise<{ user: User; tempPassword: string }> {
+  async invite(
+    tenantId: string,
+    email: string,
+    name: string,
+    role?: string,
+  ): Promise<{ user: User; tempPassword: string }> {
     const existingUser = await this.findByEmailAndTenant(email, tenantId);
     if (existingUser) {
       throw new ConflictException('Email already in use for this tenant');

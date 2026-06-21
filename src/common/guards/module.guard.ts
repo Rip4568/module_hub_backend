@@ -11,7 +11,7 @@ export class ModuleGuard implements CanActivate {
     private reflector: Reflector,
     private tenantModuleService: TenantModuleService,
     private cls: ClsService,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -19,10 +19,7 @@ export class ModuleGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    const requiredModule = this.reflector.get<string>(
-      'requiredModule',
-      context.getClass(),
-    );
+    const requiredModule = this.reflector.get<string>('requiredModule', context.getClass());
 
     if (!requiredModule) {
       return true;
@@ -38,10 +35,7 @@ export class ModuleGuard implements CanActivate {
       });
     }
 
-    const hasModule = await this.tenantModuleService.isModuleEnabled(
-      tenantId,
-      requiredModule,
-    );
+    const hasModule = await this.tenantModuleService.isModuleEnabled(tenantId, requiredModule);
 
     if (!hasModule) {
       throw new ForbiddenException({

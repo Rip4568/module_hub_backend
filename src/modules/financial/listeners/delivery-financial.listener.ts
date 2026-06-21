@@ -2,16 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  DomainEvents,
-  DeliveryCompletedPayload,
-} from '../../../common/events/domain.events';
+import { DomainEvents, DeliveryCompletedPayload } from '../../../common/events/domain.events';
 import { TenantModuleService } from '../../tenant-module/tenant-module.service';
-import {
-  Transaction,
-  TransactionStatus,
-  TransactionType,
-} from '../entities/transaction.entity';
+import { Transaction, TransactionStatus, TransactionType } from '../entities/transaction.entity';
 
 @Injectable()
 export class DeliveryFinancialListener {

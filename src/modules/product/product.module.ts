@@ -29,7 +29,7 @@ import { OrderInventoryListener } from './listeners/order-inventory.listener';
       ProductEcommerceProfile,
       InventoryLog,
       StockLevel,
-      InventoryMovement
+      InventoryMovement,
     ]),
     TenantModuleModule,
     PermissionModule,
@@ -43,38 +43,63 @@ import { OrderInventoryListener } from './listeners/order-inventory.listener';
       provide: getRepositoryToken(Product),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(Product, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          Product,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(ProductEcommerceProfile),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(ProductEcommerceProfile, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          ProductEcommerceProfile,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(InventoryLog),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(InventoryLog, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          InventoryLog,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(StockLevel),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(StockLevel, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          StockLevel,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(InventoryMovement),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(InventoryMovement, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          InventoryMovement,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
   ],
   exports: [ProductService, InventoryService],
 })
-export class ProductModule { }
+export class ProductModule {}

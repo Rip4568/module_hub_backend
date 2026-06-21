@@ -17,7 +17,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('delivery')
 export class DeliveryController {
-  constructor(private readonly deliveryService: DeliveryService) { }
+  constructor(private readonly deliveryService: DeliveryService) {}
 
   @Get('track/:trackingCode')
   @RequiresPermission(Permissions.READ_DELIVERY)
@@ -27,7 +27,11 @@ export class DeliveryController {
 
   @Get()
   @RequiresPermission(Permissions.READ_DELIVERY)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.deliveryService.findAll(tenantId, page, limit);
   }
 
@@ -51,13 +55,21 @@ export class DeliveryController {
 
   @Patch(':id')
   @RequiresPermission(Permissions.UPDATE_DELIVERY)
-  update(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() payload: Partial<CreateDeliveryDto>) {
+  update(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() payload: Partial<CreateDeliveryDto>,
+  ) {
     return this.deliveryService.update(id, payload, tenantId);
   }
 
   @Patch(':id/status')
   @RequiresPermission(Permissions.UPDATE_DELIVERY)
-  updateStatus(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { status: string }) {
+  updateStatus(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { status: string },
+  ) {
     return this.deliveryService.updateStatus(id, body.status, tenantId);
   }
 
@@ -73,7 +85,7 @@ export class DeliveryController {
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
     @Body() location: { lat: number; lng: number; batteryLevel?: number; timestamp?: Date },
-    @Req() req: AuthenticatedRequest
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.deliveryService.updateLocation(id, location, req.user.userId, tenantId);
   }
@@ -84,14 +96,18 @@ export class DeliveryController {
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
     @Body() document: { type: DeliveryDocumentType; url: string },
-    @Req() req: AuthenticatedRequest
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.deliveryService.uploadDocument(id, document, req.user.userId, tenantId);
   }
 
   @Post(':id/complete')
   @RequiresPermission(Permissions.COMPLETE_DELIVERY)
-  complete(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() proof: CompleteDeliveryDto) {
+  complete(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() proof: CompleteDeliveryDto,
+  ) {
     return this.deliveryService.complete(id, proof, tenantId);
   }
 }

@@ -15,7 +15,7 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([BankAccount, Transaction]),
     TenantModuleModule,
-    PermissionModule
+    PermissionModule,
   ],
   controllers: [BankAccountController, TransactionController, FinancialController],
   providers: [BankAccountService, TransactionService, DeliveryFinancialListener],

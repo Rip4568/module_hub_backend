@@ -1,4 +1,8 @@
-const INSECURE_JWT_SECRETS = new Set(['change-me-in-production', 'me-preencha-U.U', 'dev-refresh-secret']);
+const INSECURE_JWT_SECRETS = new Set([
+  'change-me-in-production',
+  'me-preencha-U.U',
+  'dev-refresh-secret',
+]);
 
 function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';

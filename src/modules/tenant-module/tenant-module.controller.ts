@@ -16,7 +16,11 @@ export class TenantModuleController {
   constructor(private readonly tenantModuleService: TenantModuleService) {}
 
   @Get()
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.tenantModuleService.findAll(tenantId, page, limit);
   }
 

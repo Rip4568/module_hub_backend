@@ -1,4 +1,16 @@
-import { BadRequestException, Controller, Post, Body, UploadedFile, UseInterceptors, UseGuards, Get, Param, Delete, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Post,
+  Body,
+  UploadedFile,
+  UseInterceptors,
+  UseGuards,
+  Get,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentService } from './document.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -21,7 +33,11 @@ export class DocumentController {
 
   @Get()
   @RequiresPermission(Permissions.READ_DOCUMENT)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.documentService.findAll(tenantId, page, limit);
   }
 

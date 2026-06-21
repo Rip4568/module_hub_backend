@@ -6,8 +6,7 @@ export function assertAllowedStorageUrl(url: string, baseUrl = '/uploads'): void
   }
 
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  const isRelativeStoragePath =
-    url === normalizedBase || url.startsWith(`${normalizedBase}/`);
+  const isRelativeStoragePath = url === normalizedBase || url.startsWith(`${normalizedBase}/`);
 
   if (isRelativeStoragePath) {
     return;

@@ -83,9 +83,7 @@ describe('TenantModuleService', () => {
   });
 
   it('activates a new module and grants admin permissions', async () => {
-    tenantModuleRepositoryMock.find
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]);
+    tenantModuleRepositoryMock.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     tenantModuleRepositoryMock.create.mockImplementation((payload) => payload);
     tenantModuleRepositoryMock.save.mockImplementation(async (payload) => ({
       id: 'module-new',
@@ -102,7 +100,10 @@ describe('TenantModuleService', () => {
 
     expect(result.moduleId).toBe('document');
     expect(result.isActive).toBe(true);
-    expect(roleServiceMock.grantPermissions).toHaveBeenCalledWith('role-admin', ['perm-1', 'perm-2']);
+    expect(roleServiceMock.grantPermissions).toHaveBeenCalledWith('role-admin', [
+      'perm-1',
+      'perm-2',
+    ]);
     expect(eventEmitterMock.emitAsync).toHaveBeenCalledWith(
       DomainEvents.MODULE_ACTIVATED,
       expect.objectContaining({ tenantId: 'tenant-1', moduleId: 'document' }),

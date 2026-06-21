@@ -13,7 +13,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('team_permissions')
 export class RoleController {
-  constructor(private readonly roleService: RoleService) { }
+  constructor(private readonly roleService: RoleService) {}
 
   @Post()
   @RequiresPermission(Permissions.MANAGE_ROLES)
@@ -23,7 +23,11 @@ export class RoleController {
 
   @Get()
   @RequiresPermission(Permissions.MANAGE_ROLES)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.roleService.findAll(tenantId, page, limit);
   }
 
@@ -35,11 +39,7 @@ export class RoleController {
 
   @Put(':id')
   @RequiresPermission(Permissions.MANAGE_ROLES)
-  update(
-    @CurrentTenant() tenantId: string,
-    @Param('id') id: string,
-    @Body() updateRoleDto: any,
-  ) {
+  update(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() updateRoleDto: any) {
     return this.roleService.update(tenantId, id, updateRoleDto);
   }
 
@@ -51,13 +51,21 @@ export class RoleController {
 
   @Post(':id/permissions')
   @RequiresPermission(Permissions.MANAGE_PERMISSIONS)
-  addPermissions(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { permissions: string[] }) {
+  addPermissions(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { permissions: string[] },
+  ) {
     return this.roleService.addPermissions(tenantId, id, body.permissions);
   }
 
   @Delete(':id/permissions')
   @RequiresPermission(Permissions.MANAGE_PERMISSIONS)
-  removePermissions(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() body: { permissions: string[] }) {
+  removePermissions(
+    @CurrentTenant() tenantId: string,
+    @Param('id') id: string,
+    @Body() body: { permissions: string[] },
+  ) {
     return this.roleService.removePermissions(tenantId, id, body.permissions);
   }
 }

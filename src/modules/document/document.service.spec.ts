@@ -73,7 +73,12 @@ describe('DocumentService', () => {
     }));
 
     const document = await service.uploadFile(
-      { originalname: '../../../etc/passwd', buffer: Buffer.from('data'), mimetype: 'application/pdf', size: 100 },
+      {
+        originalname: '../../../etc/passwd',
+        buffer: Buffer.from('data'),
+        mimetype: 'application/pdf',
+        size: 100,
+      },
       'tenant-1',
     );
 

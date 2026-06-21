@@ -13,7 +13,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('ecommerce')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) { }
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_CATEGORY)
@@ -23,7 +23,12 @@ export class CategoryController {
 
   @Get()
   @RequiresPermission(Permissions.READ_CATEGORY)
-  findAll(@CurrentTenant() tenantId: string, @Query('type') type?: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('type') type?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.categoryService.findAll(tenantId, type, page, limit);
   }
 

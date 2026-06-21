@@ -8,11 +8,7 @@ import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ActivityLog]),
-    TenantModuleModule,
-    PermissionModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ActivityLog]), TenantModuleModule, PermissionModule],
   controllers: [ActivityLogController],
   providers: [ActivityLogService, ModuleActivityListener],
   exports: [ActivityLogService],

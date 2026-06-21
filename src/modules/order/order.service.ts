@@ -16,7 +16,11 @@ import { StockLocationType } from '../product/entities/stock-level.entity';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
-import { DomainEvents, OrderCreatedPayload, OrderStockDeductPayload } from '../../common/events/domain.events';
+import {
+  DomainEvents,
+  OrderCreatedPayload,
+  OrderStockDeductPayload,
+} from '../../common/events/domain.events';
 import { normalizePagination } from '../../common/utils/pagination.util';
 
 interface InlineCustomer {
@@ -41,7 +45,7 @@ export class OrderService {
     private readonly moduleRef: ModuleRef,
     private readonly tenantModuleService: TenantModuleService,
     private readonly activityLogService: ActivityLogService,
-  ) { }
+  ) {}
 
   private async resolveCustomer(
     tenantId: string,
@@ -111,7 +115,9 @@ export class OrderService {
         total: 0,
       } as Order);
 
-      const locationType = orderData.vehicleId ? StockLocationType.VEHICLE : StockLocationType.WAREHOUSE;
+      const locationType = orderData.vehicleId
+        ? StockLocationType.VEHICLE
+        : StockLocationType.WAREHOUSE;
       const locationId = orderData.vehicleId;
 
       const savedOrder = await queryRunner.manager.save(order);
@@ -120,16 +126,17 @@ export class OrderService {
         let total = 0;
         const orderItems = [];
 
-        const productIds = items.map(i => i.productId);
-        const variantIds = items.filter(i => i.variantId).map(i => i.variantId!);
+        const productIds = items.map((i) => i.productId);
+        const variantIds = items.filter((i) => i.variantId).map((i) => i.variantId!);
 
         const products = await queryRunner.manager.find(Product, { where: { id: In(productIds) } });
-        const variants = variantIds.length > 0
-          ? await queryRunner.manager.find(ProductVariant, { where: { id: In(variantIds) } })
-          : [];
+        const variants =
+          variantIds.length > 0
+            ? await queryRunner.manager.find(ProductVariant, { where: { id: In(variantIds) } })
+            : [];
 
-        const productMap = new Map(products.map(p => [p.id, p]));
-        const variantMap = new Map(variants.map(v => [v.id, v]));
+        const productMap = new Map(products.map((p) => [p.id, p]));
+        const variantMap = new Map(variants.map((v) => [v.id, v]));
 
         const stockItems: OrderStockDeductPayload['items'] = [];
 
@@ -204,7 +211,6 @@ export class OrderService {
       } satisfies OrderCreatedPayload);
 
       return createdOrder;
-
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -215,7 +221,10 @@ export class OrderService {
 
   async checkout(tenantId: string, checkoutDto: Record<string, unknown>): Promise<Order> {
     const { items, customer, ...orderData } = checkoutDto;
-    const customerData = await this.resolveCustomer(tenantId, customer as InlineCustomer | undefined);
+    const customerData = await this.resolveCustomer(
+      tenantId,
+      customer as InlineCustomer | undefined,
+    );
 
     const createOrderDto = {
       ...orderData,
@@ -282,7 +291,12 @@ export class OrderService {
     return this.orderRepository.save(order);
   }
 
-  async assignResources(id: string, driverId: string, vehicleId: string | undefined, tenantId: string): Promise<Order> {
+  async assignResources(
+    id: string,
+    driverId: string,
+    vehicleId: string | undefined,
+    tenantId: string,
+  ): Promise<Order> {
     const order = await this.findOne(id, tenantId);
     order.driverId = driverId;
     if (vehicleId) order.vehicleId = vehicleId;

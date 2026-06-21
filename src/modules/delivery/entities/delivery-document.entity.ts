@@ -3,32 +3,32 @@ import { Delivery } from './delivery.entity';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 export enum DeliveryDocumentType {
-    INVOICE = 'INVOICE',
-    PROOF = 'PROOF',
-    PHOTO = 'PHOTO',
-    OTHERS = 'OTHERS',
+  INVOICE = 'INVOICE',
+  PROOF = 'PROOF',
+  PHOTO = 'PHOTO',
+  OTHERS = 'OTHERS',
 }
 
 @Entity('delivery_documents')
 export class DeliveryDocument extends TenantAwareEntity {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    deliveryId: string;
+  @Column()
+  deliveryId: string;
 
-    @ManyToOne(() => Delivery, { onDelete: 'CASCADE' })
-    delivery: Delivery;
+  @ManyToOne(() => Delivery, { onDelete: 'CASCADE' })
+  delivery: Delivery;
 
-    @Column({
-        type: 'simple-enum',
-        enum: DeliveryDocumentType,
-    })
-    type: DeliveryDocumentType;
+  @Column({
+    type: 'simple-enum',
+    enum: DeliveryDocumentType,
+  })
+  type: DeliveryDocumentType;
 
-    @Column()
-    url: string;
+  @Column()
+  url: string;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 }

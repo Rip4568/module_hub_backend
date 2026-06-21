@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -31,7 +36,7 @@ export class DeliveryService {
     private readonly eventEmitter: EventEmitter2,
     private readonly cls: ClsService,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Delivery>> {
     const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
@@ -56,7 +61,11 @@ export class DeliveryService {
     return this.deliveryRepository.save(delivery);
   }
 
-  async update(id: string, payload: Partial<CreateDeliveryDto>, tenantId: string): Promise<Delivery> {
+  async update(
+    id: string,
+    payload: Partial<CreateDeliveryDto>,
+    tenantId: string,
+  ): Promise<Delivery> {
     const delivery = await this.findOne(id, tenantId);
     Object.assign(delivery, payload);
     return this.deliveryRepository.save(delivery);
@@ -81,7 +90,9 @@ export class DeliveryService {
     return this.deliveryRepository.save(delivery);
   }
 
-  async createIndependent(data: Partial<CreateDeliveryDto> & { tenantId: string }): Promise<Delivery> {
+  async createIndependent(
+    data: Partial<CreateDeliveryDto> & { tenantId: string },
+  ): Promise<Delivery> {
     const delivery = this.deliveryRepository.create({
       ...data,
       type: data.type || DeliveryType.SERVICE,
@@ -103,7 +114,9 @@ export class DeliveryService {
   }
 
   async findByTrackingCode(trackingCode: string, tenantId: string): Promise<Delivery | null> {
-    const order = await this.dataSource.getRepository(Order).findOne({ where: { trackingCode, tenantId } });
+    const order = await this.dataSource
+      .getRepository(Order)
+      .findOne({ where: { trackingCode, tenantId } });
     if (!order) {
       return null;
     }
@@ -121,7 +134,7 @@ export class DeliveryService {
     id: string,
     data: { lat: number; lng: number; batteryLevel?: number; timestamp?: Date },
     driverId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<Delivery> {
     const delivery = await this.findOne(id, tenantId);
 
@@ -170,7 +183,7 @@ export class DeliveryService {
     id: string,
     data: { type: DeliveryDocumentType; url: string },
     driverId: string,
-    tenantId: string
+    tenantId: string,
   ): Promise<DeliveryDocument> {
     const delivery = await this.findOne(id, tenantId);
 

@@ -7,11 +7,7 @@ import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Vehicle]),
-    TenantModuleModule,
-    PermissionModule
-  ],
+  imports: [TypeOrmModule.forFeature([Vehicle]), TenantModuleModule, PermissionModule],
   controllers: [VehicleController],
   providers: [VehicleService],
   exports: [VehicleService],

@@ -13,7 +13,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')
 export class BankAccountController {
-  constructor(private readonly bankAccountService: BankAccountService) { }
+  constructor(private readonly bankAccountService: BankAccountService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PAYMENT) // Loose mapping for bank account setup

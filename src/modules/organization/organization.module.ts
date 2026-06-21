@@ -11,7 +11,7 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([Organization, Address]),
     TenantModuleModule,
-    PermissionModule
+    PermissionModule,
   ],
   controllers: [OrganizationController],
   providers: [OrganizationService],

@@ -80,7 +80,11 @@ export class AuthService {
     return this.configService.get<string>('JWT_SECRET') || 'dev-refresh-secret';
   }
 
-  async validateUser(email: string, pass: string, tenantId?: string): Promise<Partial<User> | null> {
+  async validateUser(
+    email: string,
+    pass: string,
+    tenantId?: string,
+  ): Promise<Partial<User> | null> {
     let user: User | null = null;
     const contextTenantId = this.cls.get(RequestContext.TENANT_ID);
 
@@ -227,7 +231,10 @@ export class AuthService {
       let adminRole;
 
       if (registerDto.tenantName) {
-        const slug = registerDto.tenantName.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        const slug = registerDto.tenantName
+          .toLowerCase()
+          .replace(/ /g, '-')
+          .replace(/[^\w-]+/g, '');
 
         const existingTenant = await this.tenantService.findBySlug(slug);
         if (existingTenant) {

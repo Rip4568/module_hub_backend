@@ -67,7 +67,9 @@ describe('ModuleGuard', () => {
 
   it('allows access when module is enabled for tenant', async () => {
     reflectorMock.get.mockReturnValue('delivery');
-    clsMock.get.mockImplementation((key: string) => (key === RequestContext.TENANT_ID ? 'tenant-1' : undefined));
+    clsMock.get.mockImplementation((key: string) =>
+      key === RequestContext.TENANT_ID ? 'tenant-1' : undefined,
+    );
     tenantModuleServiceMock.isModuleEnabled.mockResolvedValue(true);
     const guard = new ModuleGuard(
       reflectorMock as unknown as Reflector,

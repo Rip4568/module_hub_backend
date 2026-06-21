@@ -75,13 +75,17 @@ describe('DeliveryService', () => {
   it('throws NotFoundException when delivery is missing in findOne', async () => {
     deliveryRepositoryMock.findOne.mockResolvedValue(null);
 
-    await expect(service.findOne('delivery-1', 'tenant-1')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findOne('delivery-1', 'tenant-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('throws BadRequestException for invalid status transition input', async () => {
     jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'delivery-1' } as Delivery);
 
-    await expect(service.updateStatus('delivery-1', 'invalid-status', 'tenant-1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.updateStatus('delivery-1', 'invalid-status', 'tenant-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('sets startedAt when moving to IN_ROUTE', async () => {
@@ -161,7 +165,10 @@ describe('DeliveryService', () => {
       },
     };
     deliveryRepositoryMock.create.mockReturnValue({ ...payload, status: DeliveryStatus.PENDING });
-    deliveryRepositoryMock.save.mockImplementation(async (entity) => ({ id: 'delivery-1', ...entity }));
+    deliveryRepositoryMock.save.mockImplementation(async (entity) => ({
+      id: 'delivery-1',
+      ...entity,
+    }));
 
     const result = await service.createIndependent(payload);
 
@@ -197,7 +204,9 @@ describe('DeliveryService', () => {
   });
 
   it('rejects external URLs when uploading delivery document', async () => {
-    jest.spyOn(service, 'findOne').mockResolvedValue({ id: 'delivery-1', tenantId: 'tenant-1' } as Delivery);
+    jest
+      .spyOn(service, 'findOne')
+      .mockResolvedValue({ id: 'delivery-1', tenantId: 'tenant-1' } as Delivery);
 
     await expect(
       service.uploadDocument(

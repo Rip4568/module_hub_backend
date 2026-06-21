@@ -15,7 +15,7 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('drivers_management')
 export class DriverController {
-  constructor(private readonly driverService: DriverService) { }
+  constructor(private readonly driverService: DriverService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_DRIVER)
@@ -25,7 +25,11 @@ export class DriverController {
 
   @Get()
   @RequiresPermission(Permissions.READ_DRIVER)
-  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
     return this.driverService.findAll(tenantId, page, limit);
   }
 
@@ -37,11 +41,7 @@ export class DriverController {
 
   @Put(':id')
   @RequiresPermission(Permissions.UPDATE_DRIVER)
-  update(
-    @CurrentTenant() tenantId: string,
-    @Param('id') id: string,
-    @Body() updateDriverDto: any,
-  ) {
+  update(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() updateDriverDto: any) {
     return this.driverService.update(tenantId, id, updateDriverDto);
   }
 
