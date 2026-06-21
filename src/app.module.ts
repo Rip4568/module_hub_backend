@@ -2,7 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseConfigService } from './config/database.config';
 
@@ -44,12 +44,15 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 100,
+        },
+      ],
+      skipIf: () => process.env.NODE_ENV === 'test',
+    }),
     EventEmitterModule.forRoot(),
     StorageModule,
     EmailModule,
@@ -87,6 +90,10 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
   controllers: [],
   providers: [
     TenantSubscriber,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: BillingEnforcementGuard,

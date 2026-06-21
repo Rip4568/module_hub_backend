@@ -18,7 +18,13 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   const config = new DocumentBuilder()

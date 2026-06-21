@@ -6,7 +6,9 @@ import {
   Body,
   Get,
   UnauthorizedException,
+  BadRequestException,
   Req,
+  Headers,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -51,8 +53,15 @@ export class AuthController {
 
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto.email);
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Headers('x-tenant-id') tenantIdHeader?: string,
+  ) {
+    const tenantId = dto.tenantId ?? tenantIdHeader;
+    if (!tenantId) {
+      throw new BadRequestException('tenantId is required (body or x-tenant-id header)');
+    }
+    return this.authService.forgotPassword(dto.email, tenantId);
   }
 
   @Throttle({ default: { limit: 3, ttl: 60000 } })

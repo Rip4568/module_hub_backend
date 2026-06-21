@@ -9,7 +9,7 @@ export class LoginDto {
     @IsNotEmpty()
     password: string;
 
-    // @IsUUID()
-    // @IsOptional()
+    @IsUUID()
+    @IsOptional()
     tenantId?: string;
 }

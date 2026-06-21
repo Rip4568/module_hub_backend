@@ -42,7 +42,14 @@ export class AuthService {
   ) {}
 
   private getRefreshSecret(): string {
-    return this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET') || 'dev-refresh-secret';
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    if (refreshSecret) {
+      return refreshSecret;
+    }
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('JWT_REFRESH_SECRET must be set in production');
+    }
+    return this.configService.get<string>('JWT_SECRET') || 'dev-refresh-secret';
   }
 
   async validateUser(email: string, pass: string, tenantId?: string): Promise<Partial<User> | null> {
@@ -112,8 +119,8 @@ export class AuthService {
     }
   }
 
-  async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.userService.findByEmail(email);
+  async forgotPassword(email: string, tenantId: string): Promise<{ message: string }> {
+    const user = await this.userService.findByEmailAndTenant(email, tenantId);
 
     if (user) {
       const resetToken = this.jwtService.sign(
@@ -188,7 +195,6 @@ export class AuthService {
         const tenant = await this.tenantService.create({
           name: registerDto.tenantName,
           slug: slug,
-          ownerId: 'temp',
           config: {},
         });
         registerDto.tenantId = tenant.id;

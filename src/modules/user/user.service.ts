@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
 import { HashUtils } from '../../common/utils/hash.utils';
 import { UserRole } from './entities/user-role.entity';
@@ -9,6 +10,7 @@ import { Permission } from '../permission/entities/permission.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../role/entities/role.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class UserService {
@@ -118,13 +120,35 @@ export class UserService {
     return this.sanitizeUser(user);
   }
 
-  async findAllByTenant(tenantId: string): Promise<User[]> {
-    const users = await this.userRepository.find({
+  private generateTempPassword(): string {
+    const randomPart = randomBytes(6).toString('base64url').slice(0, 8);
+    return `${randomPart}Aa1!`;
+  }
+
+  async findAllByTenant(
+    tenantId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResult<User>> {
+    const maxLimit = 100;
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(maxLimit, Math.max(1, Number(limit) || 20));
+
+    const [users, total] = await this.userRepository.findAndCount({
       where: { tenantId },
       relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
-    return users.map((user) => this.sanitizeUser(user));
+
+    return {
+      data: users.map((user) => this.sanitizeUser(user)),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async findOneByTenant(id: string, tenantId: string): Promise<User> {
@@ -231,7 +255,7 @@ export class UserService {
       throw new ConflictException('Email already in use for this tenant');
     }
 
-    const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+    const tempPassword = this.generateTempPassword();
     const user = await this.create({
       email,
       name,

@@ -19,7 +19,13 @@ export async function createE2EApp(): Promise<INestApplication> {
   }).compile();
 
   const app = moduleFixture.createNestApplication();
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(new GlobalExceptionFilter());
   await app.init();
   return app;
