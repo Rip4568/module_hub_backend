@@ -1,11 +1,12 @@
 import { IsObject, IsOptional } from 'class-validator';
+import { TenantBranding, TenantConfig } from '../interfaces/tenant-config.interface';
 
 export class UpdateTenantConfigDto {
   @IsOptional()
   @IsObject()
-  config?: Record<string, unknown>;
+  config?: Partial<TenantConfig>;
 
   @IsOptional()
   @IsObject()
-  branding?: Record<string, unknown>;
+  branding?: Partial<TenantBranding>;
 }

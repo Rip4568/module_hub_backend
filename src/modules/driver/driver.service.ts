@@ -7,6 +7,7 @@ import { TenantService } from '../tenant/tenant.service';
 import { InviteDriverDto } from './dto/invite-driver.dto';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
 
 @Injectable()
@@ -109,20 +110,21 @@ export class DriverService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Driver>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [drivers, total] = await this.driverRepository.findAndCount({
       where: { tenantId },
       relations: ['user'],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     const data = drivers.map((driver) => this.sanitizeDriver(driver));
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

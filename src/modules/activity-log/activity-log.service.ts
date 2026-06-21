@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityLog } from './entities/activity-log.entity';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class ActivityLogService {
@@ -17,18 +18,19 @@ export class ActivityLogService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<ActivityLog>> {
+      const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
       const [data, total] = await this.activityLogRepository.findAndCount({
         where: { tenantId },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip,
+        take: safeLimit,
         order: { createdAt: 'DESC' },
       });
       return {
         data,
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
       };
   }
 

@@ -8,7 +8,6 @@ import { Delivery, DeliveryStatus, DeliveryType } from './entities/delivery.enti
 import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
 import { DeliveryDocument, DeliveryDocumentType } from './entities/delivery-document.entity';
 import { Order, OrderStatus } from '../order/entities/order.entity';
-import { Transaction, TransactionType, TransactionStatus } from '../financial/entities/transaction.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { CompleteDeliveryDto } from './dto/complete-delivery.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
@@ -16,6 +15,7 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import { RequestContext } from '../../common/context/request.context';
 import { DomainEvents, DeliveryCompletedPayload } from '../../common/events/domain.events';
 import { assertAllowedStorageUrl } from '../../infrastructure/storage/utils/validate-storage-url.util';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class DeliveryService {
@@ -34,19 +34,20 @@ export class DeliveryService {
   ) { }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Delivery>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [data, total] = await this.deliveryRepository.findAndCount({
       where: { tenantId },
       relations: ['order', 'driver', 'driver.user'],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 
@@ -212,6 +213,11 @@ export class DeliveryService {
       delivery.status = DeliveryStatus.COMPLETED;
       const savedDelivery = await queryRunner.manager.save(delivery);
 
+      let orderPayload: Pick<
+        DeliveryCompletedPayload,
+        'orderId' | 'orderNumber' | 'amount' | 'organizationId'
+      > = {};
+
       if (delivery.orderId) {
         const order = await queryRunner.manager.findOne(Order, { where: { id: delivery.orderId } });
         if (order) {
@@ -219,16 +225,12 @@ export class DeliveryService {
           order.completedAt = new Date();
           await queryRunner.manager.save(order);
 
-          const transaction = queryRunner.manager.create(Transaction, {
+          orderPayload = {
             orderId: order.id,
-            tenantId: order.tenantId,
-            type: TransactionType.CREDIT,
+            orderNumber: order.orderNumber,
             amount: order.total,
-            status: TransactionStatus.PENDING,
-            description: `Receita Ref Pedido ${order.orderNumber}`,
             organizationId: order.organizationId,
-          });
-          await queryRunner.manager.save(transaction);
+          };
         }
       }
 
@@ -246,8 +248,8 @@ export class DeliveryService {
       await this.eventEmitter.emitAsync(DomainEvents.DELIVERY_COMPLETED, {
         tenantId,
         deliveryId: id,
-        orderId: delivery.orderId,
         userId,
+        ...orderPayload,
       } satisfies DeliveryCompletedPayload);
 
       return savedDelivery;

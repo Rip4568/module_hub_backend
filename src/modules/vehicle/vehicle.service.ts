@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Vehicle, VehicleStatus, VehicleType, FuelType } from './entities/vehicle.entity';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class VehicleService {
@@ -23,18 +24,19 @@ export class VehicleService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Vehicle>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [data, total] = await this.vehicleRepository.findAndCount({
       where: { tenantId },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

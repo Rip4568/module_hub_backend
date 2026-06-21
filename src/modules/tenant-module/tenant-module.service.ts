@@ -5,6 +5,7 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -17,10 +18,12 @@ import { Permission } from '../permission/entities/permission.entity';
 import { RoleService } from '../role/role.service';
 import { RoleName } from '../role/enums/role-name.enum';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 import { DomainEvents, ModuleActivatedPayload } from '../../common/events/domain.events';
 
 @Injectable()
 export class TenantModuleService {
+  private readonly logger = new Logger(TenantModuleService.name);
   constructor(
     @InjectRepository(TenantModuleEntity)
     private tenantModuleRepository: Repository<TenantModuleEntity>,
@@ -163,17 +166,41 @@ export class TenantModuleService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<TenantModuleEntity>> {
-    const allModules = await this.getNormalizedModules(tenantId);
-    const total = allModules.length;
-    const start = (page - 1) * limit;
-    const data = allModules.slice(start, start + limit);
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
+    const [rawData, total] = await this.tenantModuleRepository.findAndCount({
+      where: { tenantId },
+      order: { createdAt: 'ASC' },
+      skip,
+      take: safeLimit,
+    });
+
+    const data = this.deduplicatePageByCanonicalModule(rawData);
+
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
+  }
+
+  private deduplicatePageByCanonicalModule(
+    records: TenantModuleEntity[],
+  ): TenantModuleEntity[] {
+    const seen = new Map<string, TenantModuleEntity>();
+
+    for (const record of records) {
+      const canonicalModuleId = this.normalizeModuleId(record.moduleId);
+      const normalized = { ...record, moduleId: canonicalModuleId };
+      const existing = seen.get(canonicalModuleId);
+
+      if (!existing || (!existing.isActive && normalized.isActive)) {
+        seen.set(canonicalModuleId, normalized);
+      }
+    }
+
+    return Array.from(seen.values());
   }
 
   async activateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity> {
@@ -233,7 +260,7 @@ export class TenantModuleService {
       });
 
       if (!adminRole) {
-        console.warn(`Admin role not found for tenant ${tenantId}. Skipping permission grant.`);
+        this.logger.warn(`Admin role not found for tenant ${tenantId}. Skipping permission grant.`);
         return;
       }
 
@@ -241,14 +268,13 @@ export class TenantModuleService {
       const permissionIds = permissions.map((p) => p.id);
 
       if (permissionIds.length > 0) {
-        // 3. Grant Permissions using optimized bulk method
         await this.roleService.grantPermissions(adminRole.id, permissionIds);
-        console.log(
+        this.logger.log(
           `Granted ${permissions.length} permissions for module ${moduleId} to Admin role.`,
         );
       }
     } catch (e) {
-      console.error('Failed to auto-grant permissions:', e);
+      this.logger.error('Failed to auto-grant permissions:', e);
     }
   }
 

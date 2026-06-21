@@ -10,6 +10,7 @@ import {
 import { TenantModuleEntity } from '../../tenant-module/entities/tenant-module.entity';
 import { User } from '../../user/entities/user.entity';
 import { Role } from '../../role/entities/role.entity';
+import { TenantConfig, TenantBranding } from '../interfaces/tenant-config.interface';
 
 export enum TenantStatus {
   ACTIVE = 'ACTIVE',
@@ -36,10 +37,10 @@ export class Tenant {
   customDomain: string;
 
   @Column({ type: 'json', nullable: true })
-  config: any;
+  config: TenantConfig | null;
 
   @Column({ type: 'json', nullable: true })
-  branding: any;
+  branding: TenantBranding | null;
 
   @Column({
     type: 'simple-enum',

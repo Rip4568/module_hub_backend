@@ -5,6 +5,7 @@ import { Organization, OrganizationStatus } from './entities/organization.entity
 import { Address } from './entities/address.entity';
 import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/create-organization.dto';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class OrganizationService {
@@ -25,18 +26,19 @@ export class OrganizationService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Organization>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [data, total] = await this.organizationRepository.findAndCount({
       where: { tenantId },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

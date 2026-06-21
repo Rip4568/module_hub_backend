@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from './entities/tenant.entity';
+import { TenantBranding, TenantConfig } from './interfaces/tenant-config.interface';
 
 @Injectable()
 export class TenantService {
@@ -35,7 +36,11 @@ export class TenantService {
     return this.tenantRepository.findOne({ where: { slug } });
   }
 
-  async updateConfig(id: string, tenantId: string, data: { config?: Record<string, unknown>; branding?: Record<string, unknown> }): Promise<Tenant> {
+  async updateConfig(
+    id: string,
+    tenantId: string,
+    data: { config?: Partial<TenantConfig>; branding?: Partial<TenantBranding> },
+  ): Promise<Tenant> {
     const tenant = await this.findOne(id, tenantId);
 
     if (data.config !== undefined) {

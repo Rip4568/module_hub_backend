@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -16,6 +17,7 @@ import { PaginatedResult } from '../../common/interfaces/paginated-result.interf
 import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { DomainEvents, OrderCreatedPayload, OrderStockDeductPayload } from '../../common/events/domain.events';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 interface InlineCustomer {
   email?: string;
@@ -104,7 +106,7 @@ export class OrderService {
         ...orderData,
         createdById: userId,
         status: OrderStatus.PENDING,
-        orderNumber: `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        orderNumber: `ORD-${randomUUID()}`,
         subtotal: 0,
         total: 0,
       } as Order);
@@ -229,19 +231,20 @@ export class OrderService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Order>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [data, total] = await this.orderRepository.findAndCount({
       where: { tenantId },
       relations: ['customer', 'driver', 'vehicle', 'items'],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

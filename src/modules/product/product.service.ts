@@ -8,6 +8,7 @@ import { ProductEcommerceProfile, EcommerceStatus } from './entities/ecommerce-p
 import { CreateProductDto, UpdateProductDto } from './dto/create-product.dto';
 import { ClsService } from 'nestjs-cls';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class ProductService {
@@ -55,8 +56,7 @@ export class ProductService {
   }
 
   async findAll(query: any = {}): Promise<PaginatedResult<Product>> {
-    const page = Number(query.page) || 1;
-    const limit = Number(query.limit) || 20;
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(query.page, query.limit);
     const qb = this.productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.categories', 'pc')
       .leftJoinAndSelect('pc.category', 'category');
@@ -75,11 +75,11 @@ export class ProductService {
 
     const [data, total] = await qb
       .orderBy('product.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(skip)
+      .take(safeLimit)
       .getManyAndCount();
 
-    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    return { data, total, page: safePage, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
   }
 
   async findOne(id: string, options: { withEcommerce?: boolean; tenantId: string }): Promise<Product> {

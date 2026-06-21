@@ -5,6 +5,7 @@ import { Role } from './entities/role.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class RoleService {
@@ -26,19 +27,20 @@ export class RoleService {
   }
 
   async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Role>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const [data, total] = await this.roleRepository.findAndCount({
       where: { tenantId },
       relations: ['permissions', 'permissions.permission'],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

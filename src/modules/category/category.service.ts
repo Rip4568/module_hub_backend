@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class CategoryService {
@@ -20,6 +21,7 @@ export class CategoryService {
   }
 
   async findAll(tenantId: string, type?: string, page = 1, limit = 20): Promise<PaginatedResult<Category>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
     const where: any = { tenantId };
     if (type) {
       where.type = type;
@@ -27,16 +29,16 @@ export class CategoryService {
     const [data, total] = await this.categoryRepository.findAndCount({
         where,
         relations: ['children', 'parent'],
-        skip: (page - 1) * limit,
-        take: limit,
+        skip,
+        take: safeLimit,
         order: { createdAt: 'DESC' },
     });
     return {
       data,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

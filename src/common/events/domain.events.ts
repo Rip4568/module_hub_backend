@@ -27,6 +27,9 @@ export interface DeliveryCompletedPayload {
   tenantId: string;
   deliveryId: string;
   orderId?: string;
+  orderNumber?: string;
+  amount?: number;
+  organizationId?: string;
   userId?: string;
 }
 
