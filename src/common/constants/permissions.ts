@@ -95,6 +95,7 @@ export const Permissions = {
     CREATE_TENANT: 'can_create_tenant',
     READ_TENANT: 'can_read_tenant',
     UPDATE_TENANT: 'can_update_tenant',
+    MANAGE_MODULES: 'can_manage_modules',
 } as const;
 
 export type PermissionType = typeof Permissions[keyof typeof Permissions];

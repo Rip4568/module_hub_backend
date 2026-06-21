@@ -582,6 +582,14 @@ const PERMISSIONS = [
     displayName: 'Editar Tenant',
     dependencies: ['can_read_tenant'],
   },
+  {
+    name: 'can_manage_modules',
+    resource: 'tenant-module',
+    action: 'manage',
+    module: 'tenant',
+    displayName: 'Gerenciar Módulos',
+    dependencies: ['can_read_tenant'],
+  },
 ];
 
 async function seed() {

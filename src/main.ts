@@ -3,10 +3,10 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { validateJwtSecret } from './config/validate-env';
+import { validateProductionEnv } from './config/validate-env';
 
 async function bootstrap() {
-  validateJwtSecret();
+  validateProductionEnv();
   const app = await NestFactory.create(AppModule);
 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';

@@ -48,11 +48,13 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
