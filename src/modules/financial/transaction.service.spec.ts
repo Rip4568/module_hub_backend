@@ -7,11 +7,22 @@ import { Transaction, TransactionStatus, TransactionType } from './entities/tran
 describe('TransactionService', () => {
   let service: TransactionService;
 
+  const createQueryBuilderMock = {
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    groupBy: jest.fn().mockReturnThis(),
+    setParameter: jest.fn().mockReturnThis(),
+    getRawOne: jest.fn(),
+    getRawMany: jest.fn(),
+  };
+
   const transactionRepositoryMock = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(() => createQueryBuilderMock),
   };
 
   beforeEach(async () => {
@@ -48,11 +59,16 @@ describe('TransactionService', () => {
     expect(updated.processedAt).toBeInstanceOf(Date);
   });
 
-  it('calculates KPI aggregates from transaction list', async () => {
-    transactionRepositoryMock.find.mockResolvedValue([
-      { amount: 150, type: TransactionType.CREDIT, status: TransactionStatus.COMPLETED },
-      { amount: 30, type: TransactionType.DEBIT, status: TransactionStatus.PENDING },
-      { amount: 20, type: TransactionType.DEBIT, status: TransactionStatus.CANCELLED },
+  it('calculates KPI aggregates via SQL', async () => {
+    createQueryBuilderMock.getRawOne.mockResolvedValue({
+      totalTransactions: '3',
+      totalIncome: '150',
+      totalExpense: '50',
+    });
+    createQueryBuilderMock.getRawMany.mockResolvedValue([
+      { status: TransactionStatus.COMPLETED, count: '1' },
+      { status: TransactionStatus.PENDING, count: '1' },
+      { status: TransactionStatus.CANCELLED, count: '1' },
     ]);
 
     const kpis = await service.getKPIs('tenant-1');
@@ -66,5 +82,6 @@ describe('TransactionService', () => {
       totalExpense: 50,
       balance: 100,
     });
+    expect(transactionRepositoryMock.createQueryBuilder).toHaveBeenCalled();
   });
 });

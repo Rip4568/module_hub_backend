@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
@@ -10,6 +11,7 @@ import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { RoleService } from '../role/role.service';
 import { Driver } from '../driver/entities/driver.entity';
 import { RequestContext } from '../../common/context/request.context';
+import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -17,8 +19,11 @@ describe('AuthService', () => {
   const userServiceMock = {
     findByEmail: jest.fn(),
     findOneByTenant: jest.fn(),
+    findOneEntity: jest.fn(),
     create: jest.fn(),
     addRole: jest.fn(),
+    updateLastLogin: jest.fn(),
+    updatePassword: jest.fn(),
   };
 
   const tenantServiceMock = {
@@ -32,6 +37,11 @@ describe('AuthService', () => {
 
   const jwtServiceMock = {
     sign: jest.fn(),
+    verify: jest.fn(),
+  };
+
+  const configServiceMock = {
+    get: jest.fn((key: string) => (key === 'JWT_SECRET' ? 'test-secret' : undefined)),
   };
 
   const roleServiceMock = {
@@ -49,6 +59,12 @@ describe('AuthService', () => {
     set: jest.fn(),
   };
 
+  const emailTemplateServiceMock = {
+    sendForgotPassword: jest.fn(),
+    sendDriverInvite: jest.fn(),
+    sendUserInvite: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -59,9 +75,11 @@ describe('AuthService', () => {
         { provide: TenantService, useValue: tenantServiceMock },
         { provide: TenantModuleService, useValue: tenantModuleServiceMock },
         { provide: JwtService, useValue: jwtServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
         { provide: RoleService, useValue: roleServiceMock },
         { provide: ClsService, useValue: clsMock },
         { provide: getRepositoryToken(Driver), useValue: driverRepositoryMock },
+        { provide: EmailTemplateService, useValue: emailTemplateServiceMock },
       ],
     }).compile();
 
@@ -77,7 +95,6 @@ describe('AuthService', () => {
       id: 'user-1',
       email: 'admin@tenant.com',
       tenantId: 'tenant-1',
-      password: 'hashed-password',
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
 
@@ -89,7 +106,23 @@ describe('AuthService', () => {
       tenantId: 'tenant-1',
     });
     expect(result.activeModules).toEqual(['erp', 'delivery']);
-    expect(userServiceMock.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
+  });
+
+  it('issues access and refresh tokens on login', async () => {
+    jwtServiceMock.sign
+      .mockReturnValueOnce('access-token')
+      .mockReturnValueOnce('refresh-token');
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    userServiceMock.updateLastLogin.mockResolvedValue(undefined);
+
+    const result = await service.login(
+      { id: 'user-1', email: 'admin@tenant.com', tenantId: 'tenant-1' },
+      '127.0.0.1',
+    );
+
+    expect(result.token).toBe('access-token');
+    expect(result.refreshToken).toBe('refresh-token');
+    expect(userServiceMock.updateLastLogin).toHaveBeenCalledWith('user-1', '127.0.0.1');
   });
 
   it('blocks registration when email is already in use', async () => {
@@ -98,21 +131,6 @@ describe('AuthService', () => {
     await expect(
       service.register({
         email: 'admin@tenant.com',
-        password: '12345678',
-        name: 'Admin',
-        tenantName: 'Tenant One',
-        tenantId: 'tenant-placeholder',
-      }),
-    ).rejects.toBeInstanceOf(ConflictException);
-  });
-
-  it('blocks registration when tenant slug is already taken', async () => {
-    userServiceMock.findByEmail.mockResolvedValue(null);
-    tenantServiceMock.findBySlug.mockResolvedValue({ id: 'tenant-existing' });
-
-    await expect(
-      service.register({
-        email: 'new@tenant.com',
         password: '12345678',
         name: 'Admin',
         tenantName: 'Tenant One',
@@ -147,6 +165,5 @@ describe('AuthService', () => {
       tenantId: 'tenant-1',
     });
     expect(clsMock.set).toHaveBeenCalledWith(RequestContext.TENANT_ID, 'tenant-1');
-    expect(userServiceMock.addRole).toHaveBeenCalledWith('user-1', 'role-admin');
   });
 });

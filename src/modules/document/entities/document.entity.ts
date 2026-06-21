@@ -50,7 +50,7 @@ export class Document extends TenantAwareEntity {
   mimeType: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DocumentStatus,
     default: DocumentStatus.PENDING,
   })

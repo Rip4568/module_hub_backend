@@ -31,7 +31,7 @@ export class UserService {
     return sanitizedUser as User;
   }
 
-  private async findOneEntity(id: string): Promise<User> {
+  private async findOneEntityInternal(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
@@ -114,7 +114,7 @@ export class UserService {
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.findOneEntity(id);
+    const user = await this.findOneEntityInternal(id);
     return this.sanitizeUser(user);
   }
 
@@ -207,5 +207,39 @@ export class UserService {
       });
       await this.userPermissionRepository.save(userPerm);
     }
+  }
+
+  async findOneEntity(id: string): Promise<User> {
+    return this.findOneEntityInternal(id);
+  }
+
+  async updateLastLogin(userId: string, ip?: string): Promise<void> {
+    await this.userRepository.update(userId, {
+      lastLoginAt: new Date(),
+      lastLoginIp: ip,
+    });
+  }
+
+  async updatePassword(userId: string, password: string): Promise<void> {
+    const hashed = await HashUtils.hash(password);
+    await this.userRepository.update(userId, { password: hashed });
+  }
+
+  async invite(tenantId: string, email: string, name: string, role?: string): Promise<{ user: User; tempPassword: string }> {
+    const existingUser = await this.findByEmailAndTenant(email, tenantId);
+    if (existingUser) {
+      throw new ConflictException('Email already in use for this tenant');
+    }
+
+    const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+    const user = await this.create({
+      email,
+      name,
+      password: tempPassword,
+      tenantId,
+      role,
+    });
+
+    return { user, tempPassword };
   }
 }

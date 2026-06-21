@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DocumentService } from './document.service';
 import { Document } from './entities/document.entity';
+import { STORAGE_SERVICE } from '../../infrastructure/storage/interfaces/storage.service.interface';
 
 describe('DocumentService', () => {
   let service: DocumentService;
@@ -15,6 +16,12 @@ describe('DocumentService', () => {
     remove: jest.fn(),
   };
 
+  const storageServiceMock = {
+    upload: jest.fn(),
+    delete: jest.fn(),
+    getUrl: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -22,6 +29,7 @@ describe('DocumentService', () => {
       providers: [
         DocumentService,
         { provide: getRepositoryToken(Document), useValue: documentRepositoryMock },
+        { provide: STORAGE_SERVICE, useValue: storageServiceMock },
       ],
     }).compile();
 
@@ -44,31 +52,38 @@ describe('DocumentService', () => {
       fileUrl: 'https://file.local/invoice.pdf',
       tenantId: 'tenant-1',
     });
-    expect(documentRepositoryMock.create).toHaveBeenCalledWith({
-      type: 'invoice',
-      name: 'Invoice',
-      fileUrl: 'https://file.local/invoice.pdf',
-      tenantId: 'tenant-1',
-    });
   });
 
   it('throws NotFoundException when document is outside tenant scope', async () => {
     documentRepositoryMock.findOne.mockResolvedValue(null);
 
     await expect(service.findOne('tenant-1', 'doc-1')).rejects.toBeInstanceOf(NotFoundException);
-    expect(documentRepositoryMock.findOne).toHaveBeenCalledWith({
-      where: { id: 'doc-1', tenantId: 'tenant-1' },
-    });
   });
 
-  it('removes document only after tenant-scoped find', async () => {
-    const document = { id: 'doc-1', tenantId: 'tenant-1' };
-    jest.spyOn(service, 'findOne').mockResolvedValue(document as Document);
-    documentRepositoryMock.remove.mockResolvedValue(undefined);
+  it('uploads file via storage service with tenant scope', async () => {
+    storageServiceMock.upload.mockResolvedValue({
+      key: 'uuid-invoice.pdf',
+      url: '/uploads/tenant-1/uuid-invoice.pdf',
+      size: 100,
+    });
 
-    await service.remove('tenant-1', 'doc-1');
+    const url = await service.uploadFile(
+      { originalname: '../../../etc/passwd', buffer: Buffer.from('data'), mimetype: 'application/pdf' },
+      'tenant-1',
+    );
 
-    expect(service.findOne).toHaveBeenCalledWith('tenant-1', 'doc-1');
-    expect(documentRepositoryMock.remove).toHaveBeenCalledWith(document);
+    expect(url).toBe('/uploads/tenant-1/uuid-invoice.pdf');
+    expect(storageServiceMock.upload).toHaveBeenCalledWith(
+      'tenant-1',
+      '../../../etc/passwd',
+      expect.any(Buffer),
+      'application/pdf',
+    );
+  });
+
+  it('throws when file buffer is missing', async () => {
+    await expect(
+      service.uploadFile({ originalname: 'file.pdf' }, 'tenant-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

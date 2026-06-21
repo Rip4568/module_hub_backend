@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseConfigService } from './config/database.config';
 
 // Core Modules
@@ -49,6 +50,7 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
         limit: 100,
       },
     ]),
+    EventEmitterModule.forRoot(),
     StorageModule,
     EmailModule,
     ClsModule.forRoot({

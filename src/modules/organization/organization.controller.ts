@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { OrganizationService } from './organization.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -9,6 +10,7 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
 
+@ApiTags('Organizations')
 @Controller('organizations')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('multi_organization')
@@ -23,8 +25,8 @@ export class OrganizationController {
 
   @Get()
   @RequiresPermission(Permissions.READ_SUPPLIER)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.organizationService.findAll(tenantId);
+  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.organizationService.findAll(tenantId, page, limit);
   }
 
   @Get(':id')

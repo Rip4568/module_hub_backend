@@ -15,12 +15,16 @@ export class TenantService {
     return this.tenantRepository.save(tenant);
   }
 
-  async findAll(): Promise<Tenant[]> {
-    return this.tenantRepository.find();
+  async findMyTenant(tenantId: string): Promise<Tenant | null> {
+    return this.tenantRepository.findOne({ where: { id: tenantId } });
   }
 
-  async findOne(id: string): Promise<Tenant> {
-    const tenant = await this.tenantRepository.findOne({ where: { id } });
+  async findOne(id: string, tenantId?: string): Promise<Tenant> {
+    const where: any = { id };
+    if (tenantId) {
+      where.id = tenantId;
+    }
+    const tenant = await this.tenantRepository.findOne({ where });
     if (!tenant) {
       throw new NotFoundException(`Tenant with ID ${id} not found`);
     }
@@ -29,5 +33,18 @@ export class TenantService {
 
   async findBySlug(slug: string): Promise<Tenant | null> {
     return this.tenantRepository.findOne({ where: { slug } });
+  }
+
+  async updateConfig(id: string, tenantId: string, data: { config?: Record<string, unknown>; branding?: Record<string, unknown> }): Promise<Tenant> {
+    const tenant = await this.findOne(id, tenantId);
+
+    if (data.config !== undefined) {
+      tenant.config = { ...(tenant.config || {}), ...data.config };
+    }
+    if (data.branding !== undefined) {
+      tenant.branding = { ...(tenant.branding || {}), ...data.branding };
+    }
+
+    return this.tenantRepository.save(tenant);
   }
 }

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { TransactionService } from './transaction.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -10,6 +11,7 @@ import { RequiresPermission } from '../../common/decorators/requires-permission.
 import { Permissions } from '../../common/constants/permissions';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 
+@ApiTags('Transactions')
 @Controller('transactions')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')
@@ -24,8 +26,8 @@ export class TransactionController {
 
   @Get()
   @RequiresPermission(Permissions.READ_FINANCIAL)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.transactionService.findAll(tenantId);
+  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.transactionService.findAll(tenantId, page, limit);
   }
 
   @Get(':id')

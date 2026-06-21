@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { VehicleService } from './vehicle.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -11,6 +12,7 @@ import { Permissions } from '../../common/constants/permissions';
 
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 
+@ApiTags('Vehicles')
 @Controller('vehicles')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('fleet_management')
@@ -25,8 +27,8 @@ export class VehicleController {
 
   @Get()
   @RequiresPermission(Permissions.READ_VEHICLE)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.vehicleService.findAll(tenantId);
+  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.vehicleService.findAll(tenantId, page, limit);
   }
 
   @Get(':id')

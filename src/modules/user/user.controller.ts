@@ -1,7 +1,9 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Delete, Patch } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -10,12 +12,40 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
+import { TenantService } from '../tenant/tenant.service';
+import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
 
+@ApiTags('Users')
 @Controller('users')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
-@RequiresModule('user') // Core module, always enabled
+@RequiresModule('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(
+    private readonly userService: UserService,
+    private readonly tenantService: TenantService,
+    private readonly emailTemplateService: EmailTemplateService,
+  ) {}
+
+  @Post('invite')
+  @RequiresPermission(Permissions.CREATE_USER)
+  async invite(@CurrentTenant() tenantId: string, @Body() inviteDto: InviteUserDto) {
+    const tenant = await this.tenantService.findOne(tenantId, tenantId);
+    const { user, tempPassword } = await this.userService.invite(
+      tenantId,
+      inviteDto.email,
+      inviteDto.name,
+      inviteDto.role,
+    );
+
+    await this.emailTemplateService.sendUserInvite({
+      to: inviteDto.email,
+      name: inviteDto.name,
+      tenantName: tenant.name,
+      tempPassword,
+    });
+
+    return user;
+  }
 
   @Post()
   @RequiresPermission(Permissions.CREATE_USER)
