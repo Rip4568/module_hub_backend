@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Transaction } from './transaction.entity';
+import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 
 export enum AccountType {
   CHECKING = 'CHECKING',
@@ -16,7 +17,7 @@ export enum PixKeyType {
 }
 
 @Entity()
-export class BankAccount {
+export class BankAccount extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -33,7 +34,7 @@ export class BankAccount {
   bankName: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: AccountType,
   })
   accountType: AccountType;
@@ -60,7 +61,7 @@ export class BankAccount {
   pixKey: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: PixKeyType,
     nullable: true,
   })

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,8 +23,8 @@ export class RoleController {
 
   @Get()
   @RequiresPermission(Permissions.MANAGE_ROLES)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.roleService.findAll(tenantId);
+  findAll(@CurrentTenant() tenantId: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.roleService.findAll(tenantId, page, limit);
   }
 
   @Get(':id')

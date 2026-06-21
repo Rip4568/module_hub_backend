@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class CategoryService {
@@ -18,11 +19,25 @@ export class CategoryService {
     return this.categoryRepository.save(category);
   }
 
-  async findAll(tenantId: string): Promise<Category[]> {
-    return this.categoryRepository.find({
-        where: { tenantId },
-        relations: ['children', 'parent']
+  async findAll(tenantId: string, type?: string, page = 1, limit = 20): Promise<PaginatedResult<Category>> {
+    const where: any = { tenantId };
+    if (type) {
+      where.type = type;
+    }
+    const [data, total] = await this.categoryRepository.findAndCount({
+        where,
+        relations: ['children', 'parent'],
+        skip: (page - 1) * limit,
+        take: limit,
+        order: { createdAt: 'DESC' },
     });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Category> {

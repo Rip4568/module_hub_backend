@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class RoleService {
@@ -24,11 +25,21 @@ export class RoleService {
     return this.roleRepository.save(role);
   }
 
-  async findAll(tenantId: string): Promise<Role[]> {
-    return this.roleRepository.find({
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Role>> {
+    const [data, total] = await this.roleRepository.findAndCount({
       where: { tenantId },
-      relations: ['permissions', 'permissions.permission']
+      relations: ['permissions', 'permissions.permission'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
     });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Role> {
@@ -51,7 +62,7 @@ export class RoleService {
   async remove(tenantId: string, id: string): Promise<void> {
     const role = await this.findOne(tenantId, id);
     if (role.isSystem) {
-      throw new Error("Cannot delete system role");
+      throw new ForbiddenException("Cannot delete system role");
     }
     await this.roleRepository.remove(role);
   }

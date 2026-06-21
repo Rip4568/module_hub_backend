@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
@@ -7,6 +7,7 @@ import { ProductCategory } from './entities/product-category.entity';
 import { ProductEcommerceProfile, EcommerceStatus } from './entities/ecommerce-profile.entity';
 import { CreateProductDto, UpdateProductDto } from './dto/create-product.dto';
 import { ClsService } from 'nestjs-cls';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class ProductService {
@@ -50,13 +51,19 @@ export class ProductService {
       await this.variantRepository.save(productVariants);
     }
 
-    return this.findOne(savedProduct.id, { withEcommerce: !!ecommerce });
+    return this.findOne(savedProduct.id, { withEcommerce: !!ecommerce, tenantId: savedProduct.tenantId });
   }
 
-  async findAll(query: any = {}): Promise<Product[]> {
+  async findAll(query: any = {}): Promise<PaginatedResult<Product>> {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
     const qb = this.productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.categories', 'pc')
       .leftJoinAndSelect('pc.category', 'category');
+
+    if (query.tenantId) {
+      qb.andWhere('product.tenantId = :tenantId', { tenantId: query.tenantId });
+    }
 
     if (query.withEcommerce === 'true') {
       qb.leftJoinAndSelect('product.ecommerceProfile', 'ecommerce');
@@ -66,17 +73,23 @@ export class ProductService {
       qb.andWhere('product.ecommerceProfile.status = :status', { status: query.status });
     }
 
-    return qb.getMany();
+    const [data, total] = await qb
+      .orderBy('product.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
-  async findOne(id: string, options: { withEcommerce?: boolean } = {}): Promise<Product> {
+  async findOne(id: string, options: { withEcommerce?: boolean; tenantId: string }): Promise<Product> {
     const relations = ['categories', 'categories.category', 'variants'];
     if (options.withEcommerce) {
       relations.push('ecommerceProfile');
     }
 
     const product = await this.productRepository.findOne({
-      where: { id } as any,
+      where: { id, tenantId: options.tenantId },
       relations,
     });
 
@@ -108,7 +121,7 @@ export class ProductService {
     return qb.getMany();
   }
 
-  async findOnePublicBySlug(slug: string): Promise<Product> {
+  async findOnePublicBySlug(slug: string, tenantId?: string): Promise<Product> {
     const qb = this.productRepository.createQueryBuilder('product')
       .leftJoinAndSelect('product.ecommerceProfile', 'ecommerce')
       .leftJoinAndSelect('product.categories', 'pc')
@@ -116,6 +129,10 @@ export class ProductService {
       .leftJoinAndSelect('product.variants', 'variant')
       .where('ecommerce.slug = :slug', { slug })
       .andWhere('ecommerce.status = :status', { status: EcommerceStatus.PUBLISHED });
+
+    if (tenantId) {
+      qb.andWhere('product.tenantId = :tenantId', { tenantId });
+    }
 
     qb.select([
       'product.id',
@@ -138,7 +155,7 @@ export class ProductService {
   }
 
   async update(id: string, updateProductDto: any): Promise<Product> {
-    const product = await this.findOne(id, { withEcommerce: true });
+    const product = await this.findOne(id, { withEcommerce: true, tenantId: updateProductDto.tenantId });
     const { categories, variants, ecommerce, ...productData } = updateProductDto;
 
     this.productRepository.merge(product, productData);
@@ -165,18 +182,18 @@ export class ProductService {
       await this.productCategoryRepository.save(productCategories);
     }
 
-    return this.findOne(id, { withEcommerce: !!ecommerce || !!product.ecommerceProfile });
+    return this.findOne(id, { withEcommerce: !!ecommerce || !!product.ecommerceProfile, tenantId: product.tenantId });
   }
 
-  async remove(id: string): Promise<void> {
-    const product = await this.findOne(id);
+  async remove(id: string, tenantId: string): Promise<void> {
+    const product = await this.findOne(id, { tenantId });
     await this.productRepository.remove(product);
   }
 
-  async publish(id: string): Promise<Product> {
-    const product = await this.findOne(id, { withEcommerce: true });
+  async publish(id: string, tenantId: string): Promise<Product> {
+    const product = await this.findOne(id, { withEcommerce: true, tenantId });
     if (!product.ecommerceProfile) {
-      throw new Error('Cannot publish product without ecommerce profile');
+      throw new BadRequestException('Cannot publish product without ecommerce profile');
     }
     product.ecommerceProfile.status = EcommerceStatus.PUBLISHED;
     product.ecommerceProfile.publishedAt = new Date();

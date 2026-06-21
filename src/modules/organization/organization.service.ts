@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Organization, OrganizationStatus } from './entities/organization.entity';
 import { Address } from './entities/address.entity';
 import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/create-organization.dto';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class OrganizationService {
@@ -23,8 +24,20 @@ export class OrganizationService {
     return Array.isArray(saved) ? saved[0] : saved;
   }
 
-  async findAll(tenantId: string): Promise<Organization[]> {
-    return this.organizationRepository.find({ where: { tenantId } });
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Organization>> {
+    const [data, total] = await this.organizationRepository.findAndCount({
+      where: { tenantId },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Organization> {

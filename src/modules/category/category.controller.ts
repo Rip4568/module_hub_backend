@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -23,8 +23,8 @@ export class CategoryController {
 
   @Get()
   @RequiresPermission(Permissions.READ_CATEGORY)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.categoryService.findAll(tenantId);
+  findAll(@CurrentTenant() tenantId: string, @Query('type') type?: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+    return this.categoryService.findAll(tenantId, type, page, limit);
   }
 
   @Get(':id')

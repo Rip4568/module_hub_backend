@@ -3,6 +3,7 @@ import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity'
 import { Product } from './product.entity';
 import { ProductVariant } from './product-variant.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
+import { User } from '../../user/entities/user.entity';
 import { StockLocationType } from './stock-level.entity';
 
 export enum InventoryMovementType {
@@ -22,13 +23,13 @@ export class InventoryMovement extends TenantAwareEntity {
     tenant: Tenant;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: InventoryMovementType
     })
     type: InventoryMovementType;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: StockLocationType
     })
     originLocationType: StockLocationType;
@@ -37,7 +38,7 @@ export class InventoryMovement extends TenantAwareEntity {
     originReferenceId?: string; // vehicleId or warehouseId
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: StockLocationType,
         nullable: true
     })
@@ -67,7 +68,7 @@ export class InventoryMovement extends TenantAwareEntity {
     @Column({ nullable: true })
     referenceId?: string; // Order ID, etc.
 
-    @ManyToOne(() => Tenant, { nullable: true }) // Optional: User who performed action
+    @ManyToOne(() => User, { nullable: true }) // Optional: User who performed action
     performerId?: string;
 
     @CreateDateColumn()

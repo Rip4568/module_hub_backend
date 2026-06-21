@@ -49,7 +49,7 @@ export class User extends TenantAwareEntity {
   phone: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: UserStatus,
     default: UserStatus.PENDING,
   })

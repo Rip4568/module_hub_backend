@@ -60,7 +60,7 @@ export class Driver extends TenantAwareEntity {
   selfie: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DriverStatus,
     default: DriverStatus.PENDING,
   })

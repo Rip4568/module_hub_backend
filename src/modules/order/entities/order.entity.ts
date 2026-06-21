@@ -89,14 +89,14 @@ export class Order extends TenantAwareEntity {
   total: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: OrderStatus,
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: PaymentStatus,
     default: PaymentStatus.PENDING,
   })

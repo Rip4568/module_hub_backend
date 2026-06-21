@@ -29,7 +29,7 @@ export class InventoryLog extends TenantAwareEntity {
     variant: ProductVariant;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: InventoryLogType,
     })
     type: InventoryLogType;

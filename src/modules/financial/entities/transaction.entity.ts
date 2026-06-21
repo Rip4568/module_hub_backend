@@ -41,7 +41,7 @@ export class Transaction extends TenantAwareEntity {
   order: Order;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: TransactionType,
   })
   type: TransactionType;
@@ -50,7 +50,7 @@ export class Transaction extends TenantAwareEntity {
   amount: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: TransactionStatus,
     default: TransactionStatus.PENDING,
   })

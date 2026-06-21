@@ -42,6 +42,9 @@ export class Category extends TenantAwareEntity {
   @Column({ default: 0 })
   order: number;
 
+  @Column({ nullable: true })
+  type: string;
+
   @Column({ default: true })
   isActive: boolean;
 

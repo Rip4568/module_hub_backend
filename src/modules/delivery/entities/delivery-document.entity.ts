@@ -21,7 +21,7 @@ export class DeliveryDocument extends TenantAwareEntity {
     delivery: Delivery;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: DeliveryDocumentType,
     })
     type: DeliveryDocumentType;

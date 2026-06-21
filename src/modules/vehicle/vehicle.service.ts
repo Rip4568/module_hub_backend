@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Vehicle, VehicleStatus, VehicleType, FuelType } from './entities/vehicle.entity';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class VehicleService {
@@ -21,8 +22,20 @@ export class VehicleService {
     return this.vehicleRepository.save(vehicle);
   }
 
-  async findAll(tenantId: string): Promise<Vehicle[]> {
-    return this.vehicleRepository.find({ where: { tenantId } });
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Vehicle>> {
+    const [data, total] = await this.vehicleRepository.findAndCount({
+      where: { tenantId },
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Vehicle> {

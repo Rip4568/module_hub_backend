@@ -28,11 +28,11 @@ export class ProductEcommerceProfile extends TenantAwareEntity {
     @Column('simple-array', { nullable: true })
     images: string[];
 
-    @Column({ type: 'jsonb', nullable: true })
+    @Column({ type: 'json', nullable: true })
     seoTags: any;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: EcommerceStatus,
         default: EcommerceStatus.DRAFT,
     })

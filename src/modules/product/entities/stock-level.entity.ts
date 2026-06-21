@@ -34,7 +34,7 @@ export class StockLevel extends TenantAwareEntity {
     quantity: number;
 
     @Column({
-        type: 'enum',
+        type: 'simple-enum',
         enum: StockLocationType,
         default: StockLocationType.WAREHOUSE
     })

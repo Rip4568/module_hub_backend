@@ -43,7 +43,7 @@ export class Vehicle extends TenantAwareEntity {
   organization: Organization;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: VehicleType,
   })
   type: VehicleType;
@@ -73,7 +73,7 @@ export class Vehicle extends TenantAwareEntity {
   loadCapacity: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: FuelType,
     nullable: true,
   })
@@ -92,7 +92,7 @@ export class Vehicle extends TenantAwareEntity {
   photos: string[];
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: VehicleStatus,
     default: VehicleStatus.ACTIVE,
   })

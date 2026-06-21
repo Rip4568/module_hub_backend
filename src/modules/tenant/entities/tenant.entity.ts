@@ -42,7 +42,7 @@ export class Tenant {
   branding: any;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: TenantStatus,
     default: TenantStatus.ACTIVE,
   })
