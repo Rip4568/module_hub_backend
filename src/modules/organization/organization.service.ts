@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Organization, OrganizationStatus } from './entities/organization.entity';
 import { Address } from './entities/address.entity';
 import { CreateOrganizationDto, UpdateOrganizationDto } from './dto/create-organization.dto';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class OrganizationService {
@@ -12,9 +14,12 @@ export class OrganizationService {
     private organizationRepository: Repository<Organization>,
     @InjectRepository(Address)
     private addressRepository: Repository<Address>,
-  ) { }
+  ) {}
 
-  async create(tenantId: string, createOrganizationDto: CreateOrganizationDto): Promise<Organization> {
+  async create(
+    tenantId: string,
+    createOrganizationDto: CreateOrganizationDto,
+  ): Promise<Organization> {
     const organization = this.organizationRepository.create({
       ...(createOrganizationDto as any),
       tenantId,
@@ -23,8 +28,21 @@ export class OrganizationService {
     return Array.isArray(saved) ? saved[0] : saved;
   }
 
-  async findAll(tenantId: string): Promise<Organization[]> {
-    return this.organizationRepository.find({ where: { tenantId } });
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Organization>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
+    const [data, total] = await this.organizationRepository.findAndCount({
+      where: { tenantId },
+      skip,
+      take: safeLimit,
+      order: { createdAt: 'DESC' },
+    });
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Organization> {
@@ -40,7 +58,11 @@ export class OrganizationService {
     return organization;
   }
 
-  async update(tenantId: string, id: string, updateOrganizationDto: UpdateOrganizationDto): Promise<Organization> {
+  async update(
+    tenantId: string,
+    id: string,
+    updateOrganizationDto: UpdateOrganizationDto,
+  ): Promise<Organization> {
     const organization = await this.findOne(tenantId, id);
     this.organizationRepository.merge(organization, updateOrganizationDto);
     const saved = await this.organizationRepository.save(organization);

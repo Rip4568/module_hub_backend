@@ -10,7 +10,7 @@ describe('ActivityLogService', () => {
   const activityLogRepositoryMock = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
+    findAndCount: jest.fn(),
     findOne: jest.fn(),
   };
 
@@ -28,12 +28,26 @@ describe('ActivityLogService', () => {
   });
 
   it('returns tenant-scoped logs in findAll', async () => {
-    activityLogRepositoryMock.find.mockResolvedValue([{ id: 'log-1', tenantId: 'tenant-1' }]);
+    activityLogRepositoryMock.findAndCount.mockResolvedValue([
+      [{ id: 'log-1', tenantId: 'tenant-1' }],
+      1,
+    ]);
 
     const result = await service.findAll('tenant-1');
 
-    expect(result).toEqual([{ id: 'log-1', tenantId: 'tenant-1' }]);
-    expect(activityLogRepositoryMock.find).toHaveBeenCalledWith({ where: { tenantId: 'tenant-1' } });
+    expect(result).toEqual({
+      data: [{ id: 'log-1', tenantId: 'tenant-1' }],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    });
+    expect(activityLogRepositoryMock.findAndCount).toHaveBeenCalledWith({
+      where: { tenantId: 'tenant-1' },
+      skip: 0,
+      take: 20,
+      order: { createdAt: 'DESC' },
+    });
   });
 
   it('throws NotFoundException when activity log is not found by tenant and id', async () => {

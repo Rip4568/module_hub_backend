@@ -7,10 +7,8 @@ import { DriverVehicle } from '../driver/entities/driver-vehicle.entity';
 import { Tenant } from '../tenant/entities/tenant.entity';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([Driver, DriverVehicle, Tenant])
-    ],
-    controllers: [DriverPortalController],
-    providers: [DriverPortalService],
+  imports: [TypeOrmModule.forFeature([Driver, DriverVehicle, Tenant])],
+  controllers: [DriverPortalController],
+  providers: [DriverPortalService],
 })
-export class DriverPortalModule { }
+export class DriverPortalModule {}

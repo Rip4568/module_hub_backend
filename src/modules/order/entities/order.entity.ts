@@ -1,4 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Unique,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Organization } from '../../organization/entities/organization.entity';
 import { Driver } from '../../driver/entities/driver.entity';
@@ -89,14 +100,14 @@ export class Order extends TenantAwareEntity {
   total: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: OrderStatus,
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: PaymentStatus,
     default: PaymentStatus.PENDING,
   })

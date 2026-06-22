@@ -1,4 +1,5 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -9,6 +10,7 @@ import { RequiresPermission } from '../../common/decorators/requires-permission.
 import { Permissions } from '../../common/constants/permissions';
 import { TransactionService } from './transaction.service';
 
+@ApiTags('Financial')
 @Controller('financial')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')

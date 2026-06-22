@@ -2,6 +2,78 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { Permission } from './modules/permission/entities/permission.entity';
+import { Tenant } from './modules/tenant/entities/tenant.entity';
+import { Plan } from './modules/plan/entities/plan.entity';
+import { User, UserStatus } from './modules/user/entities/user.entity';
+import { TenantModuleEntity } from './modules/tenant-module/entities/tenant-module.entity';
+import { Role } from './modules/role/entities/role.entity';
+import { UserRole } from './modules/user/entities/user-role.entity';
+import { RolePermission } from './modules/role/entities/role-permission.entity';
+import { TenantStatus } from './modules/tenant/entities/tenant.entity';
+import { HashUtils } from './common/utils/hash.utils';
+
+const DEMO_TENANT = {
+  name: 'Demo Company',
+  slug: 'demo-company',
+  plan: 'starter',
+};
+
+const PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    priceCents: 0,
+    maxBillableModules: 5,
+    isContactOnly: false,
+    sortOrder: 1,
+  },
+  {
+    id: 'profissional',
+    name: 'Profissional',
+    priceCents: 2590,
+    maxBillableModules: 10,
+    isContactOnly: false,
+    sortOrder: 2,
+  },
+  {
+    id: 'ceo',
+    name: 'CEO',
+    priceCents: 7990,
+    maxBillableModules: 20,
+    isContactOnly: false,
+    sortOrder: 3,
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    priceCents: null,
+    maxBillableModules: null,
+    isContactOnly: true,
+    sortOrder: 4,
+  },
+];
+
+const DEMO_USER = {
+  name: 'Admin',
+  email: 'admin@demo.com',
+  password: 'Admin123!',
+};
+
+const DEMO_MODULES = [
+  'ecommerce',
+  'order_management',
+  'delivery',
+  'fleet_management',
+  'drivers_management',
+  'financial',
+  'user',
+  'team_permissions',
+  'activity_log',
+  'inventory',
+  'multi_organization',
+  'document',
+  'advanced_reports',
+];
 
 const PERMISSIONS = [
   // E-commerce
@@ -402,6 +474,159 @@ const PERMISSIONS = [
     displayName: 'Agendar Relatórios',
     dependencies: ['can_read_report'],
   },
+
+  // Customers
+  {
+    name: 'can_create_customer',
+    resource: 'customer',
+    action: 'create',
+    module: 'ecommerce',
+    displayName: 'Criar Cliente',
+  },
+  {
+    name: 'can_read_customer',
+    resource: 'customer',
+    action: 'read',
+    module: 'ecommerce',
+    displayName: 'Visualizar Cliente',
+  },
+  {
+    name: 'can_update_customer',
+    resource: 'customer',
+    action: 'update',
+    module: 'ecommerce',
+    displayName: 'Editar Cliente',
+    dependencies: ['can_read_customer'],
+  },
+  {
+    name: 'can_delete_customer',
+    resource: 'customer',
+    action: 'delete',
+    module: 'ecommerce',
+    displayName: 'Excluir Cliente',
+    dependencies: ['can_read_customer'],
+  },
+
+  // Inventory
+  {
+    name: 'can_transfer_inventory',
+    resource: 'inventory',
+    action: 'transfer',
+    module: 'inventory',
+    displayName: 'Transferir Estoque',
+  },
+  {
+    name: 'can_adjust_inventory',
+    resource: 'inventory',
+    action: 'adjust',
+    module: 'inventory',
+    displayName: 'Ajustar Estoque',
+    dependencies: ['can_read_inventory'],
+  },
+  {
+    name: 'can_read_inventory',
+    resource: 'inventory',
+    action: 'read',
+    module: 'inventory',
+    displayName: 'Visualizar Estoque',
+  },
+
+  // Delivery
+  {
+    name: 'can_create_delivery',
+    resource: 'delivery',
+    action: 'create',
+    module: 'delivery',
+    displayName: 'Criar Entrega',
+  },
+  {
+    name: 'can_read_delivery',
+    resource: 'delivery',
+    action: 'read',
+    module: 'delivery',
+    displayName: 'Visualizar Entrega',
+  },
+  {
+    name: 'can_update_delivery',
+    resource: 'delivery',
+    action: 'update',
+    module: 'delivery',
+    displayName: 'Editar Entrega',
+    dependencies: ['can_read_delivery'],
+  },
+  {
+    name: 'can_complete_delivery',
+    resource: 'delivery',
+    action: 'complete',
+    module: 'delivery',
+    displayName: 'Finalizar Entrega',
+    dependencies: ['can_read_delivery'],
+  },
+
+  // Documents
+  {
+    name: 'can_create_document',
+    resource: 'document',
+    action: 'create',
+    module: 'document',
+    displayName: 'Criar Documento',
+  },
+  {
+    name: 'can_read_document',
+    resource: 'document',
+    action: 'read',
+    module: 'document',
+    displayName: 'Visualizar Documento',
+  },
+  {
+    name: 'can_delete_document',
+    resource: 'document',
+    action: 'delete',
+    module: 'document',
+    displayName: 'Excluir Documento',
+    dependencies: ['can_read_document'],
+  },
+
+  // Activity Log
+  {
+    name: 'can_read_activity_log',
+    resource: 'activity-log',
+    action: 'read',
+    module: 'activity_log',
+    displayName: 'Visualizar Log de Atividades',
+  },
+
+  // Tenant
+  {
+    name: 'can_create_tenant',
+    resource: 'tenant',
+    action: 'create',
+    module: 'tenant',
+    displayName: 'Criar Tenant',
+  },
+  {
+    name: 'can_read_tenant',
+    resource: 'tenant',
+    action: 'read',
+    module: 'tenant',
+    displayName: 'Visualizar Tenant',
+  },
+  {
+    name: 'can_update_tenant',
+    resource: 'tenant',
+    action: 'update',
+    module: 'tenant',
+    displayName: 'Editar Tenant',
+    dependencies: ['can_read_tenant'],
+  },
+  {
+    name: 'can_manage_modules',
+    resource: 'tenant-module',
+    action: 'manage',
+    module: 'tenant',
+    displayName: 'Gerenciar Módulos',
+    dependencies: ['can_read_tenant'],
+  },
 ];
 
 async function seed() {
@@ -429,6 +654,147 @@ async function seed() {
   }
 
   console.log('✅ Permissions seeded successfully!');
+
+  // --- Seed Plans ---
+  const planRepo = dataSource.getRepository(Plan);
+  console.log('🌱 Seeding plans...');
+  for (const planData of PLANS) {
+    const existing = await planRepo.findOne({ where: { id: planData.id } });
+    if (existing) {
+      await planRepo.update(existing.id, planData);
+      console.log(`  Updated plan: ${planData.name}`);
+    } else {
+      await planRepo.save(planRepo.create(planData));
+      console.log(`  Created plan: ${planData.name}`);
+    }
+  }
+  console.log('✅ Plans seeded successfully!');
+
+  // --- Seed Demo Tenant ---
+  const tenantRepo = dataSource.getRepository(Tenant);
+  console.log('🌱 Seeding demo tenant...');
+  let tenant = await tenantRepo.findOne({ where: { slug: DEMO_TENANT.slug } });
+  if (!tenant) {
+    tenant = tenantRepo.create({
+      name: DEMO_TENANT.name,
+      slug: DEMO_TENANT.slug,
+      status: TenantStatus.ACTIVE,
+      plan: DEMO_TENANT.plan,
+      config: { onboardingCompleted: true },
+    });
+    tenant = await tenantRepo.save(tenant);
+    console.log(`  Created tenant: ${tenant.name} (${tenant.id})`);
+  } else {
+    console.log(`  Tenant already exists: ${tenant.name} (${tenant.id})`);
+    if (!tenant.plan) {
+      tenant.plan = DEMO_TENANT.plan;
+    }
+    tenant.config = { ...(tenant.config || {}), onboardingCompleted: true };
+    tenant = await tenantRepo.save(tenant);
+  }
+
+  // --- Seed Admin Role ---
+  const roleRepo = dataSource.getRepository(Role);
+  console.log('🌱 Seeding admin role...');
+  let adminRole = await roleRepo.findOne({
+    where: { tenantId: tenant.id, name: 'admin' },
+  });
+  if (!adminRole) {
+    adminRole = roleRepo.create({
+      tenantId: tenant.id,
+      name: 'admin',
+      displayName: 'Administrador',
+      description: 'Full access administrator role',
+      isSystem: true,
+    });
+    adminRole = await roleRepo.save(adminRole);
+    console.log(`  Created role: ${adminRole.displayName} (${adminRole.id})`);
+  } else {
+    console.log(`  Role already exists: ${adminRole.displayName} (${adminRole.id})`);
+  }
+
+  // --- Assign all permissions to admin role ---
+  console.log('🌱 Assigning all permissions to admin role...');
+  const allPermissions = await permissionRepo.find();
+  const existingRolePerms = await dataSource.getRepository(RolePermission).find({
+    where: { roleId: adminRole.id },
+  });
+  const existingPermIds = new Set(existingRolePerms.map((rp) => rp.permissionId));
+  const newRolePerms = allPermissions
+    .filter((p) => !existingPermIds.has(p.id))
+    .map((p) =>
+      dataSource.getRepository(RolePermission).create({
+        roleId: adminRole.id,
+        permissionId: p.id,
+      }),
+    );
+  if (newRolePerms.length > 0) {
+    await dataSource.getRepository(RolePermission).save(newRolePerms);
+    console.log(`  Assigned ${newRolePerms.length} permissions to admin role`);
+  } else {
+    console.log('  All permissions already assigned to admin role');
+  }
+
+  // --- Seed Admin User ---
+  const userRepo = dataSource.getRepository(User);
+  console.log('🌱 Seeding admin user...');
+  let adminUser = await userRepo.findOne({
+    where: { tenantId: tenant.id, email: DEMO_USER.email },
+  });
+  if (!adminUser) {
+    const hashedPassword = await HashUtils.hash(DEMO_USER.password);
+    adminUser = userRepo.create({
+      tenantId: tenant.id,
+      name: DEMO_USER.name,
+      email: DEMO_USER.email,
+      password: hashedPassword,
+      status: UserStatus.ACTIVE,
+      emailVerified: true,
+    });
+    adminUser = await userRepo.save(adminUser);
+    console.log(`  Created user: ${adminUser.name} (${adminUser.id})`);
+  } else {
+    console.log(`  User already exists: ${adminUser.name} (${adminUser.id})`);
+  }
+
+  // --- Assign admin role to user ---
+  const userRoleRepo = dataSource.getRepository(UserRole);
+  console.log('🌱 Assigning admin role to user...');
+  const existingUserRole = await userRoleRepo.findOne({
+    where: { userId: adminUser.id, roleId: adminRole.id },
+  });
+  if (!existingUserRole) {
+    const userRole = userRoleRepo.create({
+      userId: adminUser.id,
+      roleId: adminRole.id,
+    });
+    await userRoleRepo.save(userRole);
+    console.log('  Assigned admin role to user');
+  } else {
+    console.log('  User already has admin role');
+  }
+
+  // --- Seed Tenant Modules ---
+  const tenantModuleRepo = dataSource.getRepository(TenantModuleEntity);
+  console.log('🌱 Seeding tenant modules...');
+  for (const moduleId of DEMO_MODULES) {
+    const existingModule = await tenantModuleRepo.findOne({
+      where: { tenantId: tenant.id, moduleId },
+    });
+    if (!existingModule) {
+      const tenantModule = tenantModuleRepo.create({
+        tenantId: tenant.id,
+        moduleId,
+        isActive: true,
+      });
+      await tenantModuleRepo.save(tenantModule);
+      console.log(`  Activated module: ${moduleId}`);
+    } else {
+      console.log(`  Module already active: ${moduleId}`);
+    }
+  }
+
+  console.log('✅ Seed completed successfully!');
   await app.close();
 }
 

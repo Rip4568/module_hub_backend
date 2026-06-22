@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Driver, DriverStatus } from './entities/driver.entity';
 import { UserService } from '../user/user.service';
+import { TenantService } from '../tenant/tenant.service';
 import { InviteDriverDto } from './dto/invite-driver.dto';
 import { CreateUserDto } from '../user/dto/create-user.dto';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
+import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
 
 @Injectable()
 export class DriverService {
@@ -12,6 +16,8 @@ export class DriverService {
     @InjectRepository(Driver)
     private driverRepository: Repository<Driver>,
     private userService: UserService,
+    private tenantService: TenantService,
+    private emailTemplateService: EmailTemplateService,
   ) {}
 
   private normalizeStatus(status?: string | null): DriverStatus {
@@ -30,46 +36,65 @@ export class DriverService {
   }
 
   async invite(tenantId: string, inviteDto: InviteDriverDto): Promise<Driver> {
-    // 1. Check if user exists
+    const tenant = await this.tenantService.findOne(tenantId, tenantId);
     let user = await this.userService.findByEmail(inviteDto.email);
     let isNewUser = false;
+    let tempPassword: string | undefined;
 
     if (!user) {
-      // Scenario A: New User
       isNewUser = true;
-      // Create user with random password (or handled by user service if it supports it)
-      // For now generating a random password placeholder.
-      // In real app, we should trigger a "Welcome/Reset Password" email flow.
-      const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+      tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
 
       const createUserDto = new CreateUserDto();
       createUserDto.email = inviteDto.email;
       createUserDto.name = inviteDto.name;
       createUserDto.password = tempPassword;
-      createUserDto.tenantId = tenantId; // Initial tenant context
+      createUserDto.tenantId = tenantId;
 
       user = await this.userService.create(createUserDto);
-      console.log(`[MOCK EMAIL] Welcome ${user.email}. Password: ${tempPassword}`);
-    } else {
-      console.log(`[MOCK EMAIL] Inverse: You have been invited to join tenant ${tenantId}`);
     }
 
-    // 2. Check if driver profile exists for this tenant
+    await this.emailTemplateService.sendDriverInvite({
+      to: inviteDto.email,
+      name: inviteDto.name,
+      tenantName: tenant.name,
+      tempPassword,
+      isNewUser,
+    });
+
     const existingDriver = await this.driverRepository.findOne({
       where: { userId: user.id, tenantId },
     });
 
     if (existingDriver) {
-      throw new Error('Driver already registered in this company.');
+      throw new ConflictException('Driver already registered in this company.');
     }
 
-    // 3. Create Driver Profile
     const driver = this.driverRepository.create({
       userId: user.id,
       tenantId,
       status: DriverStatus.ACTIVE,
-      cpf: '00000000000', // Placeholder
-      // name/email are in User entity
+      cpf: '00000000000',
+    } as unknown as Driver);
+
+    return this.sanitizeDriver(await this.driverRepository.save(driver));
+  }
+
+  async createFromUser(userId: string, tenantId: string): Promise<Driver> {
+    const existingDriver = await this.driverRepository.findOne({
+      where: { userId, tenantId },
+    });
+
+    if (existingDriver) {
+      return this.sanitizeDriver(existingDriver);
+    }
+
+    const driver = this.driverRepository.create({
+      userId,
+      organizationId: null,
+      tenantId,
+      status: DriverStatus.PENDING,
+      cpf: '00000000000',
     } as unknown as Driver);
 
     return this.sanitizeDriver(await this.driverRepository.save(driver));
@@ -84,11 +109,23 @@ export class DriverService {
     return this.sanitizeDriver(await this.driverRepository.save(driver));
   }
 
-  // ... rest of methods
-
-  async findAll(tenantId: string): Promise<Driver[]> {
-    const drivers = await this.driverRepository.find({ where: { tenantId }, relations: ['user'] });
-    return drivers.map((driver) => this.sanitizeDriver(driver));
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Driver>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
+    const [drivers, total] = await this.driverRepository.findAndCount({
+      where: { tenantId },
+      relations: ['user'],
+      skip,
+      take: safeLimit,
+      order: { createdAt: 'DESC' },
+    });
+    const data = drivers.map((driver) => this.sanitizeDriver(driver));
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Driver> {
@@ -102,7 +139,6 @@ export class DriverService {
     return this.sanitizeDriver(driver);
   }
 
-  // ... update, remove, approve, block
   async update(tenantId: string, id: string, updateDriverDto: any): Promise<Driver> {
     const driver = await this.findOne(tenantId, id);
     const payload = { ...updateDriverDto };

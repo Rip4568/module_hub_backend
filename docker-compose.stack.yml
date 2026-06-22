@@ -1,0 +1,89 @@
+# Stack completa — rode a partir da pasta module_hub_backend:
+#   docker compose -f docker-compose.stack.yml --env-file ../.env up -d --build
+# Ou copie ../.env.docker.example para ../.env na raiz do monorepo.
+
+name: module-hub
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: modulehub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-modulehub}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-modulehub}
+      POSTGRES_DB: ${DB_DATABASE:-module_hub}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - ../data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: modulehub-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - ../data/redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: modulehub-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      DB_TYPE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-modulehub}
+      DB_PASSWORD: ${DB_PASSWORD:-modulehub}
+      DB_DATABASE: ${DB_DATABASE:-module_hub}
+      DB_SYNCHRONIZE: 'false'
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-change-in-production-min-32-chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-in-production-min-32}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      RUN_SEED: ${RUN_SEED:-true}
+      EMAIL_PROVIDER: console
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_PATH: /app/uploads
+    ports:
+      - '${API_PORT:-3000}:3000'
+    volumes:
+      - ../data/uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ../module_hub_client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    container_name: modulehub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '${WEB_PORT:-8080}:80'

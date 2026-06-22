@@ -7,9 +7,10 @@ import {
   OneToMany,
   Relation,
 } from 'typeorm';
-import { TenantModuleEntity } from '../../tenant-module/entities/tenant-module.entity';
-import { User } from '../../user/entities/user.entity';
-import { Role } from '../../role/entities/role.entity';
+import type { TenantModuleEntity } from '../../tenant-module/entities/tenant-module.entity';
+import type { User } from '../../user/entities/user.entity';
+import type { Role } from '../../role/entities/role.entity';
+import { TenantConfig, TenantBranding } from '../interfaces/tenant-config.interface';
 
 export enum TenantStatus {
   ACTIVE = 'ACTIVE',
@@ -36,13 +37,13 @@ export class Tenant {
   customDomain: string;
 
   @Column({ type: 'json', nullable: true })
-  config: any;
+  config: TenantConfig | null;
 
   @Column({ type: 'json', nullable: true })
-  branding: any;
+  branding: TenantBranding | null;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: TenantStatus,
     default: TenantStatus.ACTIVE,
   })
@@ -60,12 +61,21 @@ export class Tenant {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => TenantModuleEntity, (module) => module.tenant)
+  @OneToMany(
+    () => require('../../tenant-module/entities/tenant-module.entity').TenantModuleEntity,
+    (module: TenantModuleEntity) => module.tenant,
+  )
   modules: Relation<TenantModuleEntity[]>;
 
-  @OneToMany(() => User, (user) => user.tenant)
+  @OneToMany(
+    () => require('../../user/entities/user.entity').User,
+    (user: User) => user.tenant,
+  )
   users: Relation<User[]>;
 
-  @OneToMany(() => Role, (role) => role.tenant)
+  @OneToMany(
+    () => require('../../role/entities/role.entity').Role,
+    (role: Role) => role.tenant,
+  )
   roles: Relation<Role[]>;
 }

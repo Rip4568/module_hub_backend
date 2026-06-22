@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+.git
+.husky
+test
+uploads
+*.sqlite
+.env
+.env.*
+!.env.example

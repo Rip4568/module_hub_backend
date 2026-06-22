@@ -9,12 +9,14 @@ import { Role } from '../role/entities/role.entity';
 import { RolePermission } from '../role/entities/role-permission.entity';
 import { RoleModule } from '../role/role.module';
 import { PermissionModule } from '../permission/permission.module';
+import { PlanModule } from '../plan/plan.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TenantModuleEntity, Permission, Role, RolePermission]),
     forwardRef(() => RoleModule),
-    PermissionModule,
+    forwardRef(() => PermissionModule),
+    PlanModule,
   ],
   controllers: [TenantModuleController],
   providers: [TenantModuleService],

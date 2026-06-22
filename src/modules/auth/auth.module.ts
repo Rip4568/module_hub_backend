@@ -10,13 +10,16 @@ import { TenantModule } from '../tenant/tenant.module';
 
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { RoleModule } from '../role/role.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Driver } from '../driver/entities/driver.entity';
+import { DriverModule } from '../driver/driver.module';
+import { EmailModule } from '../../infrastructure/email/email.module';
+import { PermissionModule } from '../permission/permission.module';
 
 @Module({
   imports: [
     UserModule,
     PassportModule,
+    EmailModule,
+    PermissionModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -28,10 +31,10 @@ import { Driver } from '../driver/entities/driver.entity';
     TenantModule,
     TenantModuleModule,
     RoleModule,
-    TypeOrmModule.forFeature([Driver]),
+    DriverModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

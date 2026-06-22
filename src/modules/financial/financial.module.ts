@@ -7,6 +7,7 @@ import { BankAccountController } from './bank-account.controller';
 import { TransactionService } from './transaction.service';
 import { TransactionController } from './transaction.controller';
 import { FinancialController } from './financial.controller';
+import { DeliveryFinancialListener } from './listeners/delivery-financial.listener';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 
@@ -14,10 +15,10 @@ import { PermissionModule } from '../permission/permission.module';
   imports: [
     TypeOrmModule.forFeature([BankAccount, Transaction]),
     TenantModuleModule,
-    PermissionModule
+    PermissionModule,
   ],
   controllers: [BankAccountController, TransactionController, FinancialController],
-  providers: [BankAccountService, TransactionService],
+  providers: [BankAccountService, TransactionService, DeliveryFinancialListener],
   exports: [BankAccountService, TransactionService],
 })
 export class FinancialModule {}

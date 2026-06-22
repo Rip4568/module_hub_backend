@@ -61,7 +61,7 @@ export class Address {
   longitude: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: AddressType,
     default: AddressType.MAIN,
   })

@@ -1,50 +1,78 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ClsService } from 'nestjs-cls';
 import { Delivery, DeliveryStatus, DeliveryType } from './entities/delivery.entity';
 import { DeliveryTrackingLog } from './entities/delivery-tracking-log.entity';
 import { DeliveryDocument, DeliveryDocumentType } from './entities/delivery-document.entity';
 import { Order, OrderStatus } from '../order/entities/order.entity';
-import { Transaction, TransactionType, TransactionStatus } from '../financial/entities/transaction.entity';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { CompleteDeliveryDto } from './dto/complete-delivery.dto';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { ActivityLogService } from '../activity-log/activity-log.service';
+import { RequestContext } from '../../common/context/request.context';
+import { DomainEvents, DeliveryCompletedPayload } from '../../common/events/domain.events';
+import { assertAllowedStorageUrl } from '../../infrastructure/storage/utils/validate-storage-url.util';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class DeliveryService {
   constructor(
     @InjectRepository(Delivery)
     private deliveryRepository: Repository<Delivery>,
-    @InjectRepository(Order)
-    private orderRepository: Repository<Order>,
-    @InjectRepository(Transaction)
-    private transactionRepository: Repository<Transaction>,
     @InjectRepository(DeliveryTrackingLog)
     private trackingLogRepository: Repository<DeliveryTrackingLog>,
     @InjectRepository(DeliveryDocument)
     private documentRepository: Repository<DeliveryDocument>,
     private dataSource: DataSource,
-  ) { }
+    private readonly activityLogService: ActivityLogService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly cls: ClsService,
+    private readonly configService: ConfigService,
+  ) {}
 
-  async findAll(): Promise<Delivery[]> {
-    return this.deliveryRepository.find({
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Delivery>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
+    const [data, total] = await this.deliveryRepository.findAndCount({
+      where: { tenantId },
       relations: ['order', 'driver', 'driver.user'],
+      skip,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
-  async create(createDeliveryDto: CreateDeliveryDto): Promise<Delivery> {
+  async create(createDeliveryDto: CreateDeliveryDto & { tenantId: string }): Promise<Delivery> {
     const delivery = this.deliveryRepository.create(createDeliveryDto);
     return this.deliveryRepository.save(delivery);
   }
 
-  async update(id: string, payload: Partial<CreateDeliveryDto>): Promise<Delivery> {
-    const delivery = await this.findOne(id);
+  async update(
+    id: string,
+    payload: Partial<CreateDeliveryDto>,
+    tenantId: string,
+  ): Promise<Delivery> {
+    const delivery = await this.findOne(id, tenantId);
     Object.assign(delivery, payload);
     return this.deliveryRepository.save(delivery);
   }
 
-  async updateStatus(id: string, status: string): Promise<Delivery> {
-    const delivery = await this.findOne(id);
+  async updateStatus(id: string, status: string, tenantId: string): Promise<Delivery> {
+    const delivery = await this.findOne(id, tenantId);
     const normalized = (status || '').toUpperCase();
 
     if (!(normalized in DeliveryStatus)) {
@@ -62,18 +90,21 @@ export class DeliveryService {
     return this.deliveryRepository.save(delivery);
   }
 
-  async createIndependent(data: Partial<CreateDeliveryDto> & { tenantId: string }): Promise<Delivery> {
+  async createIndependent(
+    data: Partial<CreateDeliveryDto> & { tenantId: string },
+  ): Promise<Delivery> {
     const delivery = this.deliveryRepository.create({
       ...data,
       type: data.type || DeliveryType.SERVICE,
       status: DeliveryStatus.PENDING,
+      driverId: data.driverId ?? null,
     });
     return this.deliveryRepository.save(delivery);
   }
 
-  async findOne(id: string): Promise<Delivery> {
+  async findOne(id: string, tenantId: string): Promise<Delivery> {
     const delivery = await this.deliveryRepository.findOne({
-      where: { id },
+      where: { id, tenantId },
       relations: ['order', 'driver', 'driver.user'],
     });
     if (!delivery) {
@@ -82,23 +113,35 @@ export class DeliveryService {
     return delivery;
   }
 
-  async findByOrder(orderId: string): Promise<Delivery | null> {
-    return this.deliveryRepository.findOne({ where: { orderId } });
+  async findByTrackingCode(trackingCode: string, tenantId: string): Promise<Delivery | null> {
+    const order = await this.dataSource
+      .getRepository(Order)
+      .findOne({ where: { trackingCode, tenantId } });
+    if (!order) {
+      return null;
+    }
+    return this.deliveryRepository.findOne({
+      where: { orderId: order.id },
+      relations: ['order', 'driver', 'driver.user'],
+    });
+  }
+
+  async findByOrder(orderId: string, tenantId: string): Promise<Delivery | null> {
+    return this.deliveryRepository.findOne({ where: { orderId, tenantId } });
   }
 
   async updateLocation(
     id: string,
     data: { lat: number; lng: number; batteryLevel?: number; timestamp?: Date },
-    driverId: string
+    driverId: string,
+    tenantId: string,
   ): Promise<Delivery> {
-    const delivery = await this.findOne(id);
+    const delivery = await this.findOne(id, tenantId);
 
-    // 1. Validate Driver Ownership
-    if (delivery.driverId !== driverId) {
-      throw new Error('This delivery is not assigned to you');
+    if (delivery.driverId && delivery.driverId !== driverId) {
+      throw new ForbiddenException('This delivery is not assigned to you');
     }
 
-    // 2. Logic: If first point and PENDING, move to IN_ROUTE
     if (delivery.status === DeliveryStatus.PENDING) {
       delivery.status = DeliveryStatus.IN_ROUTE;
       if (!delivery.startedAt) {
@@ -116,7 +159,6 @@ export class DeliveryService {
     try {
       const savedDelivery = await queryRunner.manager.save(delivery);
 
-      // 3. Create Tracking Log entry
       const log = this.trackingLogRepository.create({
         deliveryId: id,
         lat: data.lat,
@@ -140,13 +182,17 @@ export class DeliveryService {
   async uploadDocument(
     id: string,
     data: { type: DeliveryDocumentType; url: string },
-    driverId: string
+    driverId: string,
+    tenantId: string,
   ): Promise<DeliveryDocument> {
-    const delivery = await this.findOne(id);
+    const delivery = await this.findOne(id, tenantId);
 
-    if (delivery.driverId !== driverId) {
-      throw new Error('This delivery is not assigned to you');
+    if (delivery.driverId && delivery.driverId !== driverId) {
+      throw new ForbiddenException('This delivery is not assigned to you');
     }
+
+    const storageBaseUrl = this.configService.get<string>('STORAGE_LOCAL_BASE_URL', '/uploads');
+    assertAllowedStorageUrl(data.url, storageBaseUrl);
 
     const document = this.documentRepository.create({
       deliveryId: id,
@@ -158,28 +204,33 @@ export class DeliveryService {
     return this.documentRepository.save(document);
   }
 
-  async start(id: string): Promise<Delivery> {
-    const delivery = await this.findOne(id);
+  async start(id: string, tenantId: string): Promise<Delivery> {
+    const delivery = await this.findOne(id, tenantId);
     delivery.startedAt = new Date();
     return this.deliveryRepository.save(delivery);
   }
 
-  async complete(id: string, proof: CompleteDeliveryDto): Promise<Delivery> {
-    const delivery = await this.findOne(id);
+  async complete(id: string, proof: CompleteDeliveryDto, tenantId: string): Promise<Delivery> {
+    const delivery = await this.findOne(id, tenantId);
+    const userId = this.cls.get(RequestContext.USER_ID);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      // 1. Update Delivery
       delivery.completedAt = new Date();
       delivery.photoUrl = proof.photoUrl;
       delivery.signature = proof.signature;
       delivery.signedBy = proof.signedBy;
+      delivery.status = DeliveryStatus.COMPLETED;
       const savedDelivery = await queryRunner.manager.save(delivery);
 
-      // 2. Update Order (Only if exists)
+      let orderPayload: Pick<
+        DeliveryCompletedPayload,
+        'orderId' | 'orderNumber' | 'amount' | 'organizationId'
+      > = {};
+
       if (delivery.orderId) {
         const order = await queryRunner.manager.findOne(Order, { where: { id: delivery.orderId } });
         if (order) {
@@ -187,21 +238,33 @@ export class DeliveryService {
           order.completedAt = new Date();
           await queryRunner.manager.save(order);
 
-          // 3. Create Financial Transaction
-          const transaction = this.transactionRepository.create({
+          orderPayload = {
             orderId: order.id,
-            tenantId: order.tenantId,
-            type: TransactionType.CREDIT,
+            orderNumber: order.orderNumber,
             amount: order.total,
-            status: TransactionStatus.PENDING,
-            description: `Receita Ref Pedido ${order.orderNumber}`,
             organizationId: order.organizationId,
-          });
-          await queryRunner.manager.save(transaction);
+          };
         }
       }
 
       await queryRunner.commitTransaction();
+
+      await this.activityLogService.log({
+        tenantId,
+        userId,
+        action: 'complete',
+        resource: 'delivery',
+        resourceId: id,
+        changes: { orderId: delivery.orderId, status: DeliveryStatus.COMPLETED },
+      });
+
+      await this.eventEmitter.emitAsync(DomainEvents.DELIVERY_COMPLETED, {
+        tenantId,
+        deliveryId: id,
+        userId,
+        ...orderPayload,
+      } satisfies DeliveryCompletedPayload);
+
       return savedDelivery;
     } catch (err) {
       await queryRunner.rollbackTransaction();

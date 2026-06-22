@@ -1,9 +1,14 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseConfigService } from './config/database.config';
 
 // Core Modules
+import { PlanModule } from './modules/plan/plan.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { TenantModuleModule } from './modules/tenant-module/tenant-module.module';
 import { UserModule } from './modules/user/user.module';
@@ -26,17 +31,34 @@ import { DocumentModule } from './modules/document/document.module';
 import { ReportModule } from './modules/report/report.module';
 import { DriverPortalModule } from './modules/driver-portal/driver-portal.module';
 
+// Infrastructure
+import { StorageModule } from './infrastructure/storage/storage.module';
+import { EmailModule } from './infrastructure/email/email.module';
+
 // Common
 import { ClsModule, ClsMiddleware } from 'nestjs-cls';
 import { TenantContextMiddleware } from './common/middlewares/tenant-context.middleware';
 import { TenantSubscriber } from './common/subscribers/tenant.subscriber';
-import { NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { BillingEnforcementGuard } from './common/guards/billing-enforcement.guard';
+import { OnboardingEnforcementGuard } from './common/guards/onboarding-enforcement.guard';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 100,
+        },
+      ],
+      skipIf: () => process.env.NODE_ENV === 'test',
+    }),
+    EventEmitterModule.forRoot(),
+    StorageModule,
+    EmailModule,
     ClsModule.forRoot({
       global: true,
       middleware: { mount: false },
@@ -47,6 +69,8 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
 
     // Core
     TenantModule,
+    PlanModule,
+    OnboardingModule,
     TenantModuleModule,
     UserModule,
     AuthModule,
@@ -69,12 +93,24 @@ import { NestModule, MiddlewareConsumer } from '@nestjs/common';
     DriverPortalModule,
   ],
   controllers: [],
-  providers: [TenantSubscriber],
+  providers: [
+    TenantSubscriber,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: BillingEnforcementGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: OnboardingEnforcementGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(ClsMiddleware, TenantContextMiddleware)
-      .forRoutes('*');
+    consumer.apply(ClsMiddleware, TenantContextMiddleware).forRoutes('*');
   }
 }

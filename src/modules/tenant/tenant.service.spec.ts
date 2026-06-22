@@ -5,30 +5,30 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Tenant } from './entities/tenant.entity';
 
 describe('TenantService', () => {
-    let service: TenantService;
+  let service: TenantService;
 
-    const mockTenantRepository = {
-        create: jest.fn(),
-        save: jest.fn(),
-        find: jest.fn(),
-        findOne: jest.fn(),
-    };
+  const mockTenantRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+  };
 
-    beforeEach(async () => {
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                TenantService,
-                {
-                    provide: getRepositoryToken(Tenant),
-                    useValue: mockTenantRepository,
-                },
-            ],
-        }).compile();
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        TenantService,
+        {
+          provide: getRepositoryToken(Tenant),
+          useValue: mockTenantRepository,
+        },
+      ],
+    }).compile();
 
-        service = module.get<TenantService>(TenantService);
-    });
+    service = module.get<TenantService>(TenantService);
+  });
 
-    it('should be defined', () => {
-        expect(service).toBeDefined();
-    });
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
 });

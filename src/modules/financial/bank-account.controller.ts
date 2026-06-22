@@ -13,17 +13,22 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('financial')
 export class BankAccountController {
-  constructor(private readonly bankAccountService: BankAccountService) { }
+  constructor(private readonly bankAccountService: BankAccountService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_PAYMENT) // Loose mapping for bank account setup
-  create(@Body() createAccountDto: any) {
-    return this.bankAccountService.create(createAccountDto);
+  create(@Body() createAccountDto: any, @CurrentTenant() tenantId: string) {
+    return this.bankAccountService.create({ ...createAccountDto, tenantId });
   }
 
   @Get()
   @RequiresPermission(Permissions.READ_FINANCIAL)
-  findAll(@Query('organizationId') organizationId: string) {
-    return this.bankAccountService.findAll(organizationId);
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('organizationId') organizationId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.bankAccountService.findAll(organizationId, tenantId, page, limit);
   }
 }

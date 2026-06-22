@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, Unique } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  Unique,
+} from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
 import { Tenant } from '../../tenant/entities/tenant.entity';
 import { Organization } from '../../organization/entities/organization.entity';
@@ -43,7 +52,7 @@ export class Vehicle extends TenantAwareEntity {
   organization: Organization;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: VehicleType,
   })
   type: VehicleType;
@@ -73,7 +82,7 @@ export class Vehicle extends TenantAwareEntity {
   loadCapacity: number;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: FuelType,
     nullable: true,
   })
@@ -92,7 +101,7 @@ export class Vehicle extends TenantAwareEntity {
   photos: string[];
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: VehicleStatus,
     default: VehicleStatus.ACTIVE,
   })

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { DriverService } from './driver.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -9,11 +10,12 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
 
+@ApiTags('Drivers')
 @Controller('drivers')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('drivers_management')
 export class DriverController {
-  constructor(private readonly driverService: DriverService) { }
+  constructor(private readonly driverService: DriverService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_DRIVER)
@@ -23,8 +25,12 @@ export class DriverController {
 
   @Get()
   @RequiresPermission(Permissions.READ_DRIVER)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.driverService.findAll(tenantId);
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.driverService.findAll(tenantId, page, limit);
   }
 
   @Get(':id')
@@ -35,11 +41,7 @@ export class DriverController {
 
   @Put(':id')
   @RequiresPermission(Permissions.UPDATE_DRIVER)
-  update(
-    @CurrentTenant() tenantId: string,
-    @Param('id') id: string,
-    @Body() updateDriverDto: any,
-  ) {
+  update(@CurrentTenant() tenantId: string, @Param('id') id: string, @Body() updateDriverDto: any) {
     return this.driverService.update(tenantId, id, updateDriverDto);
   }
 

@@ -1,14 +1,21 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PermissionService } from '../../modules/permission/permission.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { Permissions } from '../constants/permissions';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private permissionService: PermissionService,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -20,10 +27,7 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const requiredPermissions = this.reflector.get<string[]>(
-      'permissions',
-      context.getHandler(),
-    );
+    const requiredPermissions = this.reflector.get<string[]>('permissions', context.getHandler());
 
     if (!requiredPermissions) {
       return true;
@@ -50,12 +54,17 @@ export class PermissionGuard implements CanActivate {
     }
 
     const hasPermissions = await this.permissionService.userHasPermissions(
-      user.userId, // JWT payload has userId
+      user.userId,
       tenantId,
       requiredPermissions,
     );
 
     if (!hasPermissions) {
+      const managesModules = requiredPermissions.includes(Permissions.MANAGE_MODULES);
+      if (managesModules && (await this.permissionService.isTenantAdmin(user.userId, tenantId))) {
+        return true;
+      }
+
       throw new ForbiddenException({
         code: 'PERMISSION_DENIED',
         message: 'You do not have permission for this operation',

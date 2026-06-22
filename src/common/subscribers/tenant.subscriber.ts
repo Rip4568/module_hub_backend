@@ -1,9 +1,4 @@
-import {
-    EntitySubscriberInterface,
-    EventSubscriber,
-    InsertEvent,
-    UpdateEvent,
-} from 'typeorm';
+import { EntitySubscriberInterface, EventSubscriber, InsertEvent, UpdateEvent } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
 import { TenantAwareEntity } from '../entities/tenant-aware.entity';
 import { RequestContext } from '../context/request.context';
@@ -13,67 +8,67 @@ import { DataSource } from 'typeorm';
 
 @EventSubscriber()
 export class TenantSubscriber implements EntitySubscriberInterface<TenantAwareEntity> {
-    constructor(
-        dataSource: DataSource,
-        private readonly cls: ClsService
-    ) {
-        dataSource.subscribers.push(this);
+  constructor(
+    dataSource: DataSource,
+    private readonly cls: ClsService,
+  ) {
+    dataSource.subscribers.push(this);
+  }
+
+  /**
+   * Indicates that this subscriber only listen to TenantAwareEntity events.
+   */
+  listenTo() {
+    return TenantAwareEntity;
+  }
+
+  /**
+   * Called before entity insertion.
+   * Ensures tenantId is present, either from the entity itself or from the context.
+   */
+  async beforeInsert(event: InsertEvent<TenantAwareEntity>) {
+    const tenantId = this.cls.get(RequestContext.TENANT_ID);
+
+    if (event.entity.tenantId && tenantId && event.entity.tenantId !== tenantId) {
+      // Security: If both are present, they must match.
+      // This prevents a user from trying to save data for another tenant.
+      throw new UnauthorizedException({
+        code: 'CROSS_TENANT_WRITE',
+        message: 'Cross-tenant write attempt detected.',
+        suggestedAction: 'VERIFY_TENANT_CONTEXT',
+      });
     }
 
-    /**
-     * Indicates that this subscriber only listen to TenantAwareEntity events.
-     */
-    listenTo() {
-        return TenantAwareEntity;
+    if (!event.entity.tenantId) {
+      if (!tenantId) {
+        // This might happen for background jobs or scripts.
+        // For production, we must ensure every insert has a tenant context.
+        throw new UnauthorizedException({
+          code: 'TENANT_CONTEXT_REQUIRED',
+          message: 'Missing tenant context for insertion.',
+          suggestedAction: 'SELECT_TENANT',
+        });
+      }
+      event.entity.tenantId = tenantId;
     }
+  }
 
-    /**
-     * Called before entity insertion.
-     * Ensures tenantId is present, either from the entity itself or from the context.
-     */
-    async beforeInsert(event: InsertEvent<TenantAwareEntity>) {
-        const tenantId = this.cls.get(RequestContext.TENANT_ID);
+  /**
+   * Called before entity update.
+   * Ensures tenantId is not changed (immutability).
+   */
+  async beforeUpdate(event: UpdateEvent<TenantAwareEntity>) {
+    if (!event.entity) return;
 
-        if (event.entity.tenantId && tenantId && event.entity.tenantId !== tenantId) {
-            // Security: If both are present, they must match.
-            // This prevents a user from trying to save data for another tenant.
-            throw new UnauthorizedException({
-                code: 'CROSS_TENANT_WRITE',
-                message: 'Cross-tenant write attempt detected.',
-                suggestedAction: 'VERIFY_TENANT_CONTEXT',
-            });
-        }
+    const tenantIdSnapshot = event.databaseEntity?.tenantId;
+    const tenantIdUpdate = event.entity.tenantId;
 
-        if (!event.entity.tenantId) {
-            if (!tenantId) {
-                // This might happen for background jobs or scripts.
-                // For production, we must ensure every insert has a tenant context.
-                throw new UnauthorizedException({
-                    code: 'TENANT_CONTEXT_REQUIRED',
-                    message: 'Missing tenant context for insertion.',
-                    suggestedAction: 'SELECT_TENANT',
-                });
-            }
-            event.entity.tenantId = tenantId;
-        }
+    if (tenantIdUpdate && tenantIdSnapshot && tenantIdUpdate !== tenantIdSnapshot) {
+      throw new UnauthorizedException({
+        code: 'TENANT_IMMUTABLE',
+        message: 'tenantId is immutable and cannot be changed.',
+        suggestedAction: 'REMOVE_TENANT_ID_FROM_PAYLOAD',
+      });
     }
-
-    /**
-     * Called before entity update.
-     * Ensures tenantId is not changed (immutability).
-     */
-    async beforeUpdate(event: UpdateEvent<TenantAwareEntity>) {
-        if (!event.entity) return;
-
-        const tenantIdSnapshot = event.databaseEntity?.tenantId;
-        const tenantIdUpdate = event.entity.tenantId;
-
-        if (tenantIdUpdate && tenantIdSnapshot && tenantIdUpdate !== tenantIdSnapshot) {
-            throw new UnauthorizedException({
-                code: 'TENANT_IMMUTABLE',
-                message: 'tenantId is immutable and cannot be changed.',
-                suggestedAction: 'REMOVE_TENANT_ID_FROM_PAYLOAD',
-            });
-        }
-    }
+  }
 }

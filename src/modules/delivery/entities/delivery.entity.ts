@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Order } from '../../order/entities/order.entity';
 import { Driver } from '../../driver/entities/driver.entity';
 import { Address } from '../../../common/interfaces/address.interface';
@@ -31,7 +40,7 @@ export class Delivery extends TenantAwareEntity {
   order: Order;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryType,
     default: DeliveryType.STANDARD,
   })
@@ -40,17 +49,17 @@ export class Delivery extends TenantAwareEntity {
   @Column({ nullable: true })
   description: string;
 
-  @Column()
-  driverId: string;
+  @Column({ nullable: true })
+  driverId: string | null;
 
-  @ManyToOne(() => Driver, (driver) => driver.deliveries)
+  @ManyToOne(() => Driver, (driver) => driver.deliveries, { nullable: true })
   driver: Driver;
 
   @Column({ nullable: true })
   vehicleId: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DeliveryStatus,
     default: DeliveryStatus.PENDING,
   })

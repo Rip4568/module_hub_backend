@@ -9,12 +9,16 @@ import { Permission } from '../permission/entities/permission.entity';
 import { Role } from '../role/entities/role.entity';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
+import { TenantModule } from '../tenant/tenant.module';
+import { EmailModule } from '../../infrastructure/email/email.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, UserRole, UserPermission, Permission, Role]),
     TenantModuleModule,
     PermissionModule,
+    TenantModule,
+    EmailModule,
   ],
   controllers: [UserController],
   providers: [UserService],

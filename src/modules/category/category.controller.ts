@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { CategoryService } from './category.service';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -13,18 +15,23 @@ import { Permissions } from '../../common/constants/permissions';
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('ecommerce')
 export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) { }
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   @RequiresPermission(Permissions.CREATE_CATEGORY)
-  create(@CurrentTenant() tenantId: string, @Body() createCategoryDto: any) {
+  create(@CurrentTenant() tenantId: string, @Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(tenantId, createCategoryDto);
   }
 
   @Get()
   @RequiresPermission(Permissions.READ_CATEGORY)
-  findAll(@CurrentTenant() tenantId: string) {
-    return this.categoryService.findAll(tenantId);
+  findAll(
+    @CurrentTenant() tenantId: string,
+    @Query('type') type?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.categoryService.findAll(tenantId, type, page, limit);
   }
 
   @Get(':id')
@@ -38,7 +45,7 @@ export class CategoryController {
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() updateCategoryDto: any,
+    @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
     return this.categoryService.update(tenantId, id, updateCategoryDto);
   }

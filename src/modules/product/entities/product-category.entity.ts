@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, ManyToOne, Unique, Column } from 'typeorm';
-import { Product } from './product.entity';
+import type { Product } from './product.entity';
 import { Category } from '../../category/entities/category.entity';
 
 @Entity()
@@ -11,7 +11,11 @@ export class ProductCategory {
   @Column()
   productId: string;
 
-  @ManyToOne(() => Product, (product) => product.categories, { onDelete: 'CASCADE' })
+  @ManyToOne(
+    () => require('./product.entity').Product,
+    (product: Product) => product.categories,
+    { onDelete: 'CASCADE' },
+  )
   product: Product;
 
   @Column()

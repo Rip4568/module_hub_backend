@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { ProductCategory } from './entities/product-category.entity';
@@ -18,7 +18,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantRepository } from '../../common/repositories/tenant.repository';
 import { DataSource } from 'typeorm';
 import { ClsService } from 'nestjs-cls';
-import { OrderModule } from '../order/order.module';
+import { OrderInventoryListener } from './listeners/order-inventory.listener';
 
 @Module({
   imports: [
@@ -29,52 +29,77 @@ import { OrderModule } from '../order/order.module';
       ProductEcommerceProfile,
       InventoryLog,
       StockLevel,
-      InventoryMovement
+      InventoryMovement,
     ]),
     TenantModuleModule,
     PermissionModule,
-    forwardRef(() => OrderModule)
   ],
   controllers: [ProductController, ProductStorefrontController, InventoryController],
   providers: [
     ProductService,
     InventoryService,
+    OrderInventoryListener,
     {
       provide: getRepositoryToken(Product),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(Product, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          Product,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(ProductEcommerceProfile),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(ProductEcommerceProfile, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          ProductEcommerceProfile,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(InventoryLog),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(InventoryLog, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          InventoryLog,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(StockLevel),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(StockLevel, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          StockLevel,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
     {
       provide: getRepositoryToken(InventoryMovement),
       inject: [DataSource, ClsService],
       useFactory: (dataSource: DataSource, cls: ClsService) => {
-        return new TenantRepository(InventoryMovement, dataSource.manager, dataSource.createQueryRunner(), cls);
+        return new TenantRepository(
+          InventoryMovement,
+          dataSource.manager,
+          dataSource.createQueryRunner(),
+          cls,
+        );
       },
     },
   ],
   exports: [ProductService, InventoryService],
 })
-export class ProductModule { }
+export class ProductModule {}

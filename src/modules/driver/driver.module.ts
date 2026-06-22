@@ -7,6 +7,8 @@ import { DriverController } from './driver.controller';
 import { TenantModuleModule } from '../tenant-module/tenant-module.module';
 import { PermissionModule } from '../permission/permission.module';
 import { UserModule } from '../user/user.module';
+import { TenantModule } from '../tenant/tenant.module';
+import { EmailModule } from '../../infrastructure/email/email.module';
 
 @Module({
   imports: [
@@ -14,9 +16,11 @@ import { UserModule } from '../user/user.module';
     TenantModuleModule,
     PermissionModule,
     UserModule,
+    TenantModule,
+    EmailModule,
   ],
   controllers: [DriverController],
   providers: [DriverService],
   exports: [DriverService],
 })
-export class DriverModule { }
+export class DriverModule {}

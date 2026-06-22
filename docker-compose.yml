@@ -1,4 +1,4 @@
-version: "3.8"
+# Infra only (Postgres + Redis). Stack completa: use docker-compose.yaml na raiz do monorepo.
 
 services:
   postgres:

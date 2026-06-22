@@ -1,14 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ClsService } from 'nestjs-cls';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { TenantService } from '../tenant/tenant.service';
 import { TenantModuleService } from '../tenant-module/tenant-module.service';
 import { RoleService } from '../role/role.service';
-import { Driver } from '../driver/entities/driver.entity';
+import { DriverService } from '../driver/driver.service';
+import { EmailTemplateService } from '../../infrastructure/email/email-template.service';
+import { PermissionService } from '../permission/permission.service';
 import { RequestContext } from '../../common/context/request.context';
 
 describe('AuthService', () => {
@@ -19,29 +21,44 @@ describe('AuthService', () => {
     findOneByTenant: jest.fn(),
     create: jest.fn(),
     addRole: jest.fn(),
+    updateLastLogin: jest.fn(),
   };
 
   const tenantServiceMock = {
     findBySlug: jest.fn(),
     create: jest.fn(),
+    findMyTenant: jest.fn(),
   };
 
   const tenantModuleServiceMock = {
     getActiveModules: jest.fn(),
+    getModuleUsageForTenant: jest.fn(),
   };
 
   const jwtServiceMock = {
     sign: jest.fn(),
   };
 
-  const roleServiceMock = {
-    create: jest.fn(),
+  const configServiceMock = {
+    get: jest.fn(),
   };
 
-  const driverRepositoryMock = {
-    findOne: jest.fn(),
+  const roleServiceMock = {
     create: jest.fn(),
-    save: jest.fn(),
+    grantAllPermissions: jest.fn(),
+  };
+
+  const driverServiceMock = {
+    createFromUser: jest.fn(),
+  };
+
+  const emailTemplateServiceMock = {
+    sendForgotPassword: jest.fn(),
+  };
+
+  const permissionServiceMock = {
+    getUserPermissions: jest.fn(),
+    findAll: jest.fn(),
   };
 
   const clsMock = {
@@ -59,9 +76,12 @@ describe('AuthService', () => {
         { provide: TenantService, useValue: tenantServiceMock },
         { provide: TenantModuleService, useValue: tenantModuleServiceMock },
         { provide: JwtService, useValue: jwtServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
         { provide: RoleService, useValue: roleServiceMock },
+        { provide: DriverService, useValue: driverServiceMock },
+        { provide: EmailTemplateService, useValue: emailTemplateServiceMock },
+        { provide: PermissionService, useValue: permissionServiceMock },
         { provide: ClsService, useValue: clsMock },
-        { provide: getRepositoryToken(Driver), useValue: driverRepositoryMock },
       ],
     }).compile();
 
@@ -72,24 +92,127 @@ describe('AuthService', () => {
     await expect(service.getCurrentUser('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('returns sanitized user and active modules in getCurrentUser', async () => {
-    userServiceMock.findOneByTenant.mockResolvedValue({
+  it('returns onboardingCompleted and billableCount in login', async () => {
+    jwtServiceMock.sign.mockReturnValue('signed-token');
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 1,
+      maxModules: 5,
+      isAtLimit: false,
+    });
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      config: { onboardingCompleted: true },
+    });
+
+    const result = await service.login({
       id: 'user-1',
       email: 'admin@tenant.com',
       tenantId: 'tenant-1',
+    });
+
+    expect(result.onboardingCompleted).toBe(true);
+    expect(result.billableCount).toBe(1);
+    expect(result.activeModules).toEqual(['erp']);
+    expect(result.token).toBe('signed-token');
+  });
+
+  it('defaults onboarding fields when tenant is missing in login', async () => {
+    jwtServiceMock.sign.mockReturnValue('signed-token');
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue([]);
+
+    const result = await service.login({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+    });
+
+    expect(result.onboardingCompleted).toBe(false);
+    expect(result.billableCount).toBe(0);
+    expect(tenantServiceMock.findMyTenant).not.toHaveBeenCalled();
+  });
+
+  it('returns sanitized user, modules, permissions and tenant plan in getCurrentUser', async () => {
+    userServiceMock.findOneByTenant.mockResolvedValue({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+      name: 'Admin',
+      tenantId: 'tenant-1',
       password: 'hashed-password',
+      roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 1,
+      maxModules: 5,
+      isAtLimit: false,
+    });
+    permissionServiceMock.getUserPermissions.mockResolvedValue([
+      'can_read_user',
+      'can_create_user',
+    ]);
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant One',
+      plan: 'professional',
+      config: { onboardingCompleted: true },
+    });
 
     const result = await service.getCurrentUser('user-1', 'tenant-1');
 
     expect(result.user).toEqual({
       id: 'user-1',
       email: 'admin@tenant.com',
+      name: 'Admin',
+      role: 'admin',
       tenantId: 'tenant-1',
+      avatar: undefined,
+      phone: undefined,
     });
     expect(result.activeModules).toEqual(['erp', 'delivery']);
+    expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
+    expect(result.plan).toBe('professional');
+    expect(result.onboardingCompleted).toBe(true);
+    expect(result.billableCount).toBe(1);
+    expect(result.tenant).toEqual({
+      plan: 'professional',
+      name: 'Tenant One',
+      onboardingCompleted: true,
+    });
     expect(userServiceMock.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
+  });
+
+  it('expands wildcard permissions for admin users in getCurrentUser', async () => {
+    userServiceMock.findOneByTenant.mockResolvedValue({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+      name: 'Admin',
+      tenantId: 'tenant-1',
+      roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
+    });
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 0,
+      maxModules: 5,
+      isAtLimit: false,
+    });
+    permissionServiceMock.getUserPermissions.mockResolvedValue(['*']);
+    permissionServiceMock.findAll.mockResolvedValue([
+      { name: 'can_read_user' },
+      { name: 'can_create_user' },
+    ]);
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant One',
+      plan: 'starter',
+      config: { onboardingCompleted: false },
+    });
+
+    const result = await service.getCurrentUser('user-1', 'tenant-1');
+
+    expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
+    expect(result.onboardingCompleted).toBe(false);
+    expect(result.billableCount).toBe(0);
+    expect(permissionServiceMock.findAll).toHaveBeenCalledWith('tenant-1');
   });
 
   it('blocks registration when email is already in use', async () => {
@@ -146,7 +269,32 @@ describe('AuthService', () => {
       email: 'new@tenant.com',
       tenantId: 'tenant-1',
     });
+    expect(tenantServiceMock.create).toHaveBeenCalledWith({
+      name: 'Tenant One',
+      slug: 'tenant-one',
+      plan: 'starter',
+      config: { onboardingCompleted: false },
+    });
     expect(clsMock.set).toHaveBeenCalledWith(RequestContext.TENANT_ID, 'tenant-1');
-    expect(userServiceMock.addRole).toHaveBeenCalledWith('user-1', 'role-admin');
+    expect(roleServiceMock.grantAllPermissions).toHaveBeenCalledWith('role-admin');
+  });
+
+  it('delegates driver profile creation to DriverService on registerDriver', async () => {
+    userServiceMock.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'driver@tenant.com',
+      tenantId: 'tenant-1',
+    });
+    driverServiceMock.createFromUser.mockResolvedValue({ id: 'driver-1' });
+
+    const result = await service.registerDriver({
+      email: 'driver@tenant.com',
+      password: '12345678',
+      name: 'Driver',
+      tenantId: 'tenant-1',
+    });
+
+    expect(result.id).toBe('user-1');
+    expect(driverServiceMock.createFromUser).toHaveBeenCalledWith('user-1', 'tenant-1');
   });
 });

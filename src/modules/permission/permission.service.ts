@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Permission } from './entities/permission.entity';
 import { UserRole } from '../user/entities/user-role.entity';
 import { UserPermission } from '../user/entities/user-permission.entity';
 import { RoleName } from '../role/enums/role-name.enum';
 import { User } from '../user/entities/user.entity';
 import { Role } from '../role/entities/role.entity';
+import { TenantModuleService } from '../tenant-module/tenant-module.service';
 
 @Injectable()
 export class PermissionService {
@@ -21,6 +22,8 @@ export class PermissionService {
     private userRepository: Repository<User>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    @Inject(forwardRef(() => TenantModuleService))
+    private tenantModuleService: TenantModuleService,
   ) {}
 
   /**
@@ -192,7 +195,22 @@ export class PermissionService {
     return { valid: true };
   }
 
-  async findAll() {
-    return this.permissionRepository.find();
+  async findAll(tenantId: string) {
+    const activeModules = await this.tenantModuleService.getActiveModules(tenantId);
+    return this.permissionRepository.find({
+      where: { module: In(activeModules) },
+    });
+  }
+
+  async isTenantAdmin(userId: string, tenantId: string): Promise<boolean> {
+    const assignment = await this.userRoleRepository
+      .createQueryBuilder('userRole')
+      .innerJoin('userRole.role', 'role')
+      .where('userRole.userId = :userId', { userId })
+      .andWhere('role.tenantId = :tenantId', { tenantId })
+      .andWhere('(LOWER(role.name) = :admin OR role.isSystem = true)', { admin: RoleName.ADMIN })
+      .getOne();
+
+    return !!assignment;
   }
 }

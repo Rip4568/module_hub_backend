@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ReportService } from './report.service';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -9,18 +10,19 @@ import { RequiresModule } from '../../common/decorators/requires-module.decorato
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
 
+@ApiTags('Reports')
 @Controller('reports')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
 @RequiresModule('advanced_reports')
 export class ReportController {
-  constructor(private readonly reportService: ReportService) { }
+  constructor(private readonly reportService: ReportService) {}
 
   @Get('sales')
   @RequiresPermission(Permissions.READ_REPORT)
   async getSalesReport(
     @CurrentTenant() tenantId: string,
     @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string
+    @Query('endDate') endDate: string,
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;

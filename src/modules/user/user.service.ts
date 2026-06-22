@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { User } from './entities/user.entity';
 import { HashUtils } from '../../common/utils/hash.utils';
 import { UserRole } from './entities/user-role.entity';
@@ -9,6 +10,7 @@ import { Permission } from '../permission/entities/permission.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Role } from '../role/entities/role.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 
 @Injectable()
 export class UserService {
@@ -31,7 +33,7 @@ export class UserService {
     return sanitizedUser as User;
   }
 
-  private async findOneEntity(id: string): Promise<User> {
+  private async findOneEntityInternal(id: string): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id },
       relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
@@ -114,17 +116,35 @@ export class UserService {
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.findOneEntity(id);
+    const user = await this.findOneEntityInternal(id);
     return this.sanitizeUser(user);
   }
 
-  async findAllByTenant(tenantId: string): Promise<User[]> {
-    const users = await this.userRepository.find({
+  private generateTempPassword(): string {
+    const randomPart = randomBytes(6).toString('base64url').slice(0, 8);
+    return `${randomPart}Aa1!`;
+  }
+
+  async findAllByTenant(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<User>> {
+    const maxLimit = 100;
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(maxLimit, Math.max(1, Number(limit) || 20));
+
+    const [users, total] = await this.userRepository.findAndCount({
       where: { tenantId },
       relations: ['roles', 'roles.role', 'permissions', 'permissions.permission'],
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
       order: { createdAt: 'DESC' },
     });
-    return users.map((user) => this.sanitizeUser(user));
+
+    return {
+      data: users.map((user) => this.sanitizeUser(user)),
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async findOneByTenant(id: string, tenantId: string): Promise<User> {
@@ -207,5 +227,44 @@ export class UserService {
       });
       await this.userPermissionRepository.save(userPerm);
     }
+  }
+
+  async findOneEntity(id: string): Promise<User> {
+    return this.findOneEntityInternal(id);
+  }
+
+  async updateLastLogin(userId: string, ip?: string): Promise<void> {
+    await this.userRepository.update(userId, {
+      lastLoginAt: new Date(),
+      lastLoginIp: ip,
+    });
+  }
+
+  async updatePassword(userId: string, password: string): Promise<void> {
+    const hashed = await HashUtils.hash(password);
+    await this.userRepository.update(userId, { password: hashed });
+  }
+
+  async invite(
+    tenantId: string,
+    email: string,
+    name: string,
+    role?: string,
+  ): Promise<{ user: User; tempPassword: string }> {
+    const existingUser = await this.findByEmailAndTenant(email, tenantId);
+    if (existingUser) {
+      throw new ConflictException('Email already in use for this tenant');
+    }
+
+    const tempPassword = this.generateTempPassword();
+    const user = await this.create({
+      email,
+      name,
+      password: tempPassword,
+      tenantId,
+      role,
+    });
+
+    return { user, tempPassword };
   }
 }

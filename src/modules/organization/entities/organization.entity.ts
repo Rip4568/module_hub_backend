@@ -47,7 +47,7 @@ export class Organization extends TenantAwareEntity {
   tradeName: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: DocumentType,
   })
   documentType: DocumentType;
@@ -77,7 +77,7 @@ export class Organization extends TenantAwareEntity {
   responsibleName: string;
 
   @Column({
-    type: 'enum',
+    type: 'simple-enum',
     enum: OrganizationStatus,
     default: OrganizationStatus.PENDING,
   })

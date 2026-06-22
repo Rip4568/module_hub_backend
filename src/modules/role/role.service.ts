@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './entities/role.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { Permission } from '../permission/entities/permission.entity';
+import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
+import { normalizePagination } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class RoleService {
@@ -14,7 +16,7 @@ export class RoleService {
     private rolePermissionRepository: Repository<RolePermission>,
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>,
-  ) { }
+  ) {}
 
   async create(tenantId: string, createRoleDto: any): Promise<Role> {
     const role = this.roleRepository.create({
@@ -24,17 +26,28 @@ export class RoleService {
     return this.roleRepository.save(role);
   }
 
-  async findAll(tenantId: string): Promise<Role[]> {
-    return this.roleRepository.find({
+  async findAll(tenantId: string, page = 1, limit = 20): Promise<PaginatedResult<Role>> {
+    const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
+    const [data, total] = await this.roleRepository.findAndCount({
       where: { tenantId },
-      relations: ['permissions', 'permissions.permission']
+      relations: ['permissions', 'permissions.permission'],
+      skip,
+      take: safeLimit,
+      order: { createdAt: 'DESC' },
     });
+    return {
+      data,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async findOne(tenantId: string, id: string): Promise<Role> {
     const role = await this.roleRepository.findOne({
       where: { id, tenantId },
-      relations: ['permissions', 'permissions.permission']
+      relations: ['permissions', 'permissions.permission'],
     });
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
@@ -51,7 +64,7 @@ export class RoleService {
   async remove(tenantId: string, id: string): Promise<void> {
     const role = await this.findOne(tenantId, id);
     if (role.isSystem) {
-      throw new Error("Cannot delete system role");
+      throw new ForbiddenException('Cannot delete system role');
     }
     await this.roleRepository.remove(role);
   }
@@ -65,12 +78,12 @@ export class RoleService {
       if (permission) {
         // Check if already exists
         const existing = await this.rolePermissionRepository.findOne({
-          where: { roleId, permissionId: permission.id }
+          where: { roleId, permissionId: permission.id },
         });
         if (!existing) {
           const rolePermission = this.rolePermissionRepository.create({
             roleId,
-            permissionId: permission.id
+            permissionId: permission.id,
           } as RolePermission);
           await this.rolePermissionRepository.save(rolePermission);
         }
@@ -79,7 +92,11 @@ export class RoleService {
     return this.findOne(tenantId, roleId);
   }
 
-  async removePermissions(tenantId: string, roleId: string, permissionNames: string[]): Promise<Role> {
+  async removePermissions(
+    tenantId: string,
+    roleId: string,
+    permissionNames: string[],
+  ): Promise<Role> {
     const role = await this.findOne(tenantId, roleId);
 
     for (const name of permissionNames) {
@@ -99,23 +116,32 @@ export class RoleService {
     if (!permissionIds.length) return;
 
     // 1. Find existing grants for this role and these permissions
-    const existingGrants = await this.rolePermissionRepository.createQueryBuilder('rp')
+    const existingGrants = await this.rolePermissionRepository
+      .createQueryBuilder('rp')
       .where('rp.roleId = :roleId', { roleId })
       .andWhere('rp.permissionId IN (:...permissionIds)', { permissionIds })
       .getMany();
 
-    const existingPermissionIds = new Set(existingGrants.map(rp => rp.permissionId));
+    const existingPermissionIds = new Set(existingGrants.map((rp) => rp.permissionId));
 
     // 2. Filter out already granted permissions
-    const newPermissionIds = permissionIds.filter(id => !existingPermissionIds.has(id));
+    const newPermissionIds = permissionIds.filter((id) => !existingPermissionIds.has(id));
 
     if (newPermissionIds.length === 0) return;
 
     // 3. Bulk Insert
-    const newGrants = newPermissionIds.map(permissionId =>
-      this.rolePermissionRepository.create({ roleId, permissionId })
+    const newGrants = newPermissionIds.map((permissionId) =>
+      this.rolePermissionRepository.create({ roleId, permissionId }),
     );
 
     await this.rolePermissionRepository.save(newGrants);
+  }
+
+  async grantAllPermissions(roleId: string): Promise<void> {
+    const permissions = await this.permissionRepository.find({ select: ['id'] });
+    await this.grantPermissions(
+      roleId,
+      permissions.map((permission) => permission.id),
+    );
   }
 }
