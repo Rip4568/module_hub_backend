@@ -92,6 +92,8 @@ export class AuthService {
       user = await this.userService.findByEmailAndTenant(email, tenantId);
     } else if (contextTenantId) {
       user = await this.userService.findByEmailAndTenant(email, contextTenantId);
+    } else {
+      user = await this.userService.findByEmail(email);
     }
 
     if (user && user.password) {
@@ -113,7 +115,20 @@ export class AuthService {
     const payload: TokenPayload = { email: user.email!, sub: user.id!, tenantId: user.tenantId };
     const refreshPayload: TokenPayload = { ...payload, type: 'refresh' };
 
-    const activeModules = await this.tenantModuleService.getActiveModules(user.tenantId || '');
+    const tenantId = user.tenantId || '';
+    const activeModules = await this.tenantModuleService.getActiveModules(tenantId);
+
+    let onboardingCompleted = false;
+    let billableCount = 0;
+
+    if (tenantId) {
+      const [tenant, moduleUsage] = await Promise.all([
+        this.tenantService.findMyTenant(tenantId),
+        this.tenantModuleService.getModuleUsageForTenant(tenantId),
+      ]);
+      onboardingCompleted = tenant?.config?.onboardingCompleted === true;
+      billableCount = moduleUsage.billableActiveCount;
+    }
 
     return {
       token: this.jwtService.sign(payload),
@@ -125,6 +140,8 @@ export class AuthService {
         ...user,
       },
       activeModules,
+      onboardingCompleted,
+      billableCount,
     };
   }
 
@@ -199,23 +216,28 @@ export class AuthService {
     }
 
     const user = await this.userService.findOneByTenant(userId, tenantId);
-    const [activeModules, permissions, tenant] = await Promise.all([
+    const [activeModules, permissions, tenant, moduleUsage] = await Promise.all([
       this.tenantModuleService.getActiveModules(tenantId),
       this.resolvePermissionSlugs(userId, tenantId),
       this.tenantService.findMyTenant(tenantId),
+      this.tenantModuleService.getModuleUsageForTenant(tenantId),
     ]);
 
     const plan = tenant?.plan ?? null;
+    const onboardingCompleted = tenant?.config?.onboardingCompleted === true;
 
     return {
       user: this.toAuthUser(user),
       activeModules,
       permissions,
       plan,
+      onboardingCompleted,
+      billableCount: moduleUsage.billableActiveCount,
       tenant: tenant
         ? {
             plan,
             name: tenant.name,
+            onboardingCompleted,
           }
         : undefined,
     };
@@ -244,7 +266,8 @@ export class AuthService {
         const tenant = await this.tenantService.create({
           name: registerDto.tenantName,
           slug: slug,
-          config: {},
+          plan: 'starter',
+          config: { onboardingCompleted: false },
         });
         registerDto.tenantId = tenant.id;
 
@@ -270,6 +293,7 @@ export class AuthService {
 
       if (adminRole) {
         await this.userService.addRole(user.id, adminRole.id);
+        await this.roleService.grantAllPermissions(adminRole.id);
       }
 
       return user;

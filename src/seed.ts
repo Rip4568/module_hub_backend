@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { Permission } from './modules/permission/entities/permission.entity';
 import { Tenant } from './modules/tenant/entities/tenant.entity';
+import { Plan } from './modules/plan/entities/plan.entity';
 import { User, UserStatus } from './modules/user/entities/user.entity';
 import { TenantModuleEntity } from './modules/tenant-module/entities/tenant-module.entity';
 import { Role } from './modules/role/entities/role.entity';
@@ -14,7 +15,43 @@ import { HashUtils } from './common/utils/hash.utils';
 const DEMO_TENANT = {
   name: 'Demo Company',
   slug: 'demo-company',
+  plan: 'starter',
 };
+
+const PLANS = [
+  {
+    id: 'starter',
+    name: 'Starter',
+    priceCents: 0,
+    maxBillableModules: 5,
+    isContactOnly: false,
+    sortOrder: 1,
+  },
+  {
+    id: 'profissional',
+    name: 'Profissional',
+    priceCents: 2590,
+    maxBillableModules: 10,
+    isContactOnly: false,
+    sortOrder: 2,
+  },
+  {
+    id: 'ceo',
+    name: 'CEO',
+    priceCents: 7990,
+    maxBillableModules: 20,
+    isContactOnly: false,
+    sortOrder: 3,
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    priceCents: null,
+    maxBillableModules: null,
+    isContactOnly: true,
+    sortOrder: 4,
+  },
+];
 
 const DEMO_USER = {
   name: 'Admin',
@@ -618,6 +655,21 @@ async function seed() {
 
   console.log('✅ Permissions seeded successfully!');
 
+  // --- Seed Plans ---
+  const planRepo = dataSource.getRepository(Plan);
+  console.log('🌱 Seeding plans...');
+  for (const planData of PLANS) {
+    const existing = await planRepo.findOne({ where: { id: planData.id } });
+    if (existing) {
+      await planRepo.update(existing.id, planData);
+      console.log(`  Updated plan: ${planData.name}`);
+    } else {
+      await planRepo.save(planRepo.create(planData));
+      console.log(`  Created plan: ${planData.name}`);
+    }
+  }
+  console.log('✅ Plans seeded successfully!');
+
   // --- Seed Demo Tenant ---
   const tenantRepo = dataSource.getRepository(Tenant);
   console.log('🌱 Seeding demo tenant...');
@@ -627,12 +679,18 @@ async function seed() {
       name: DEMO_TENANT.name,
       slug: DEMO_TENANT.slug,
       status: TenantStatus.ACTIVE,
-      config: {},
+      plan: DEMO_TENANT.plan,
+      config: { onboardingCompleted: true },
     });
     tenant = await tenantRepo.save(tenant);
     console.log(`  Created tenant: ${tenant.name} (${tenant.id})`);
   } else {
     console.log(`  Tenant already exists: ${tenant.name} (${tenant.id})`);
+    if (!tenant.plan) {
+      tenant.plan = DEMO_TENANT.plan;
+    }
+    tenant.config = { ...(tenant.config || {}), onboardingCompleted: true };
+    tenant = await tenantRepo.save(tenant);
   }
 
   // --- Seed Admin Role ---

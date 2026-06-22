@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { CategoryService } from './category.service';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 import { CurrentTenant } from '../../common/decorators/current-tenant.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantGuard } from '../../common/guards/tenant.guard';
@@ -17,7 +19,7 @@ export class CategoryController {
 
   @Post()
   @RequiresPermission(Permissions.CREATE_CATEGORY)
-  create(@CurrentTenant() tenantId: string, @Body() createCategoryDto: any) {
+  create(@CurrentTenant() tenantId: string, @Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(tenantId, createCategoryDto);
   }
 
@@ -43,7 +45,7 @@ export class CategoryController {
   update(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() updateCategoryDto: any,
+    @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
     return this.categoryService.update(tenantId, id, updateCategoryDto);
   }

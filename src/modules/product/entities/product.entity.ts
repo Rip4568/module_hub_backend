@@ -9,18 +9,21 @@ import {
   OneToOne,
 } from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
-import { Tenant } from '../../tenant/entities/tenant.entity';
-import { ProductCategory } from './product-category.entity';
-import { ProductVariant } from './product-variant.entity';
-import { OrderItem } from '../../order/entities/order-item.entity';
-import { ProductEcommerceProfile } from './ecommerce-profile.entity';
+import type { Tenant } from '../../tenant/entities/tenant.entity';
+import type { ProductCategory } from './product-category.entity';
+import type { ProductVariant } from './product-variant.entity';
+import type { OrderItem } from '../../order/entities/order-item.entity';
+import type { ProductEcommerceProfile } from './ecommerce-profile.entity';
 
 @Entity()
 export class Product extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
+  @ManyToOne(
+    () => require('../../tenant/entities/tenant.entity').Tenant,
+    { onDelete: 'CASCADE' },
+  )
   tenant: Tenant;
 
   @Column({ nullable: true })
@@ -71,15 +74,27 @@ export class Product extends TenantAwareEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToOne(() => ProductEcommerceProfile, (profile) => profile.product)
+  @OneToOne(
+    () => require('./ecommerce-profile.entity').ProductEcommerceProfile,
+    (profile: ProductEcommerceProfile) => profile.product,
+  )
   ecommerceProfile: ProductEcommerceProfile;
 
-  @OneToMany(() => ProductCategory, (productCategory) => productCategory.product)
+  @OneToMany(
+    () => require('./product-category.entity').ProductCategory,
+    (productCategory: ProductCategory) => productCategory.product,
+  )
   categories: ProductCategory[];
 
-  @OneToMany(() => ProductVariant, (variant) => variant.product)
+  @OneToMany(
+    () => require('./product-variant.entity').ProductVariant,
+    (variant: ProductVariant) => variant.product,
+  )
   variants: ProductVariant[];
 
-  @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
+  @OneToMany(
+    () => require('../../order/entities/order-item.entity').OrderItem,
+    (orderItem: OrderItem) => orderItem.product,
+  )
   orderItems: OrderItem[];
 }

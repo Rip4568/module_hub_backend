@@ -201,4 +201,16 @@ export class PermissionService {
       where: { module: In(activeModules) },
     });
   }
+
+  async isTenantAdmin(userId: string, tenantId: string): Promise<boolean> {
+    const assignment = await this.userRoleRepository
+      .createQueryBuilder('userRole')
+      .innerJoin('userRole.role', 'role')
+      .where('userRole.userId = :userId', { userId })
+      .andWhere('role.tenantId = :tenantId', { tenantId })
+      .andWhere('(LOWER(role.name) = :admin OR role.isSystem = true)', { admin: RoleName.ADMIN })
+      .getOne();
+
+    return !!assignment;
+  }
 }

@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PermissionService } from '../../modules/permission/permission.service';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { Permissions } from '../constants/permissions';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -53,12 +54,17 @@ export class PermissionGuard implements CanActivate {
     }
 
     const hasPermissions = await this.permissionService.userHasPermissions(
-      user.userId, // JWT payload has userId
+      user.userId,
       tenantId,
       requiredPermissions,
     );
 
     if (!hasPermissions) {
+      const managesModules = requiredPermissions.includes(Permissions.MANAGE_MODULES);
+      if (managesModules && (await this.permissionService.isTenantAdmin(user.userId, tenantId))) {
+        return true;
+      }
+
       throw new ForbiddenException({
         code: 'PERMISSION_DENIED',
         message: 'You do not have permission for this operation',

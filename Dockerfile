@@ -31,4 +31,5 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["node", "dist/main.js"]
+# ts-node evita ReferenceError de imports circulares entre entidades no CJS compilado pelo SWC
+CMD ["npx", "ts-node", "-r", "tsconfig-paths/register", "src/main.ts"]

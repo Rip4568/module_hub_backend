@@ -21,6 +21,7 @@ describe('AuthService', () => {
     findOneByTenant: jest.fn(),
     create: jest.fn(),
     addRole: jest.fn(),
+    updateLastLogin: jest.fn(),
   };
 
   const tenantServiceMock = {
@@ -31,6 +32,7 @@ describe('AuthService', () => {
 
   const tenantModuleServiceMock = {
     getActiveModules: jest.fn(),
+    getModuleUsageForTenant: jest.fn(),
   };
 
   const jwtServiceMock = {
@@ -43,6 +45,7 @@ describe('AuthService', () => {
 
   const roleServiceMock = {
     create: jest.fn(),
+    grantAllPermissions: jest.fn(),
   };
 
   const driverServiceMock = {
@@ -89,6 +92,45 @@ describe('AuthService', () => {
     await expect(service.getCurrentUser('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('returns onboardingCompleted and billableCount in login', async () => {
+    jwtServiceMock.sign.mockReturnValue('signed-token');
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 1,
+      maxModules: 5,
+      isAtLimit: false,
+    });
+    tenantServiceMock.findMyTenant.mockResolvedValue({
+      id: 'tenant-1',
+      config: { onboardingCompleted: true },
+    });
+
+    const result = await service.login({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+      tenantId: 'tenant-1',
+    });
+
+    expect(result.onboardingCompleted).toBe(true);
+    expect(result.billableCount).toBe(1);
+    expect(result.activeModules).toEqual(['erp']);
+    expect(result.token).toBe('signed-token');
+  });
+
+  it('defaults onboarding fields when tenant is missing in login', async () => {
+    jwtServiceMock.sign.mockReturnValue('signed-token');
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue([]);
+
+    const result = await service.login({
+      id: 'user-1',
+      email: 'admin@tenant.com',
+    });
+
+    expect(result.onboardingCompleted).toBe(false);
+    expect(result.billableCount).toBe(0);
+    expect(tenantServiceMock.findMyTenant).not.toHaveBeenCalled();
+  });
+
   it('returns sanitized user, modules, permissions and tenant plan in getCurrentUser', async () => {
     userServiceMock.findOneByTenant.mockResolvedValue({
       id: 'user-1',
@@ -99,6 +141,11 @@ describe('AuthService', () => {
       roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'delivery']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 1,
+      maxModules: 5,
+      isAtLimit: false,
+    });
     permissionServiceMock.getUserPermissions.mockResolvedValue([
       'can_read_user',
       'can_create_user',
@@ -107,6 +154,7 @@ describe('AuthService', () => {
       id: 'tenant-1',
       name: 'Tenant One',
       plan: 'professional',
+      config: { onboardingCompleted: true },
     });
 
     const result = await service.getCurrentUser('user-1', 'tenant-1');
@@ -123,7 +171,13 @@ describe('AuthService', () => {
     expect(result.activeModules).toEqual(['erp', 'delivery']);
     expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
     expect(result.plan).toBe('professional');
-    expect(result.tenant).toEqual({ plan: 'professional', name: 'Tenant One' });
+    expect(result.onboardingCompleted).toBe(true);
+    expect(result.billableCount).toBe(1);
+    expect(result.tenant).toEqual({
+      plan: 'professional',
+      name: 'Tenant One',
+      onboardingCompleted: true,
+    });
     expect(userServiceMock.findOneByTenant).toHaveBeenCalledWith('user-1', 'tenant-1');
   });
 
@@ -136,6 +190,11 @@ describe('AuthService', () => {
       roles: [{ role: { name: 'admin', displayName: 'Administrator' } }],
     });
     tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp']);
+    tenantModuleServiceMock.getModuleUsageForTenant.mockResolvedValue({
+      billableActiveCount: 0,
+      maxModules: 5,
+      isAtLimit: false,
+    });
     permissionServiceMock.getUserPermissions.mockResolvedValue(['*']);
     permissionServiceMock.findAll.mockResolvedValue([
       { name: 'can_read_user' },
@@ -145,11 +204,14 @@ describe('AuthService', () => {
       id: 'tenant-1',
       name: 'Tenant One',
       plan: 'starter',
+      config: { onboardingCompleted: false },
     });
 
     const result = await service.getCurrentUser('user-1', 'tenant-1');
 
     expect(result.permissions).toEqual(['can_read_user', 'can_create_user']);
+    expect(result.onboardingCompleted).toBe(false);
+    expect(result.billableCount).toBe(0);
     expect(permissionServiceMock.findAll).toHaveBeenCalledWith('tenant-1');
   });
 
@@ -207,8 +269,14 @@ describe('AuthService', () => {
       email: 'new@tenant.com',
       tenantId: 'tenant-1',
     });
+    expect(tenantServiceMock.create).toHaveBeenCalledWith({
+      name: 'Tenant One',
+      slug: 'tenant-one',
+      plan: 'starter',
+      config: { onboardingCompleted: false },
+    });
     expect(clsMock.set).toHaveBeenCalledWith(RequestContext.TENANT_ID, 'tenant-1');
-    expect(userServiceMock.addRole).toHaveBeenCalledWith('user-1', 'role-admin');
+    expect(roleServiceMock.grantAllPermissions).toHaveBeenCalledWith('role-admin');
   });
 
   it('delegates driver profile creation to DriverService on registerDriver', async () => {

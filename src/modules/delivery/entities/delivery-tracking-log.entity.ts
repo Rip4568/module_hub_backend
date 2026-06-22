@@ -22,7 +22,7 @@ export class DeliveryTrackingLog extends TenantAwareEntity {
   @Column({ type: 'int', nullable: true })
   batteryLevel: number;
 
-  @Column({ type: 'datetime' })
+  @Column({ type: 'timestamp' })
   timestamp: Date;
 
   @CreateDateColumn()

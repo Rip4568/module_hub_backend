@@ -8,6 +8,7 @@ import { PermissionGuard } from '../../common/guards/permission.guard';
 import { RequiresModule } from '../../common/decorators/requires-module.decorator';
 import { RequiresPermission } from '../../common/decorators/requires-permission.decorator';
 import { Permissions } from '../../common/constants/permissions';
+import { AllowDuringOnboarding } from '../../common/decorators/allow-during-onboarding.decorator';
 
 @Controller('tenant-modules')
 @UseGuards(JwtAuthGuard, TenantGuard, ModuleGuard, PermissionGuard)
@@ -24,7 +25,13 @@ export class TenantModuleController {
     return this.tenantModuleService.findAll(tenantId, page, limit);
   }
 
+  @Get('usage')
+  getUsage(@CurrentTenant() tenantId: string) {
+    return this.tenantModuleService.getModuleUsageForTenant(tenantId);
+  }
+
   @RequiresPermission(Permissions.MANAGE_MODULES)
+  @AllowDuringOnboarding()
   @Post(':moduleId/activate')
   activate(@CurrentTenant() tenantId: string, @Param('moduleId') moduleId: string) {
     return this.tenantModuleService.activateModule(tenantId, moduleId);

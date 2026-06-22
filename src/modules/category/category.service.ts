@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import { Category } from './entities/category.entity';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { normalizePagination } from '../../common/utils/pagination.util';
+import { slugify } from '../../common/utils/slug.util';
+import { CreateCategoryDto } from './dto/create-category.dto';
+import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoryService {
@@ -12,11 +15,28 @@ export class CategoryService {
     private categoryRepository: Repository<Category>,
   ) {}
 
-  async create(tenantId: string, createCategoryDto: any): Promise<Category> {
+  private async resolveUniqueSlug(tenantId: string, name: string): Promise<string> {
+    const baseSlug = slugify(name) || 'category';
+    let slug = baseSlug;
+    let suffix = 1;
+
+    while (await this.categoryRepository.findOne({ where: { tenantId, slug } })) {
+      slug = `${baseSlug}-${suffix++}`;
+    }
+
+    return slug;
+  }
+
+  async create(tenantId: string, createCategoryDto: CreateCategoryDto): Promise<Category> {
+    const slug = await this.resolveUniqueSlug(tenantId, createCategoryDto.name);
     const category = this.categoryRepository.create({
-      ...createCategoryDto,
+      name: createCategoryDto.name,
+      slug,
+      type: createCategoryDto.type ?? 'product',
       tenantId,
-    } as Category);
+      isActive: true,
+      ...(createCategoryDto.color !== undefined ? { color: createCategoryDto.color } : {}),
+    });
     return this.categoryRepository.save(category);
   }
 
@@ -27,7 +47,7 @@ export class CategoryService {
     limit = 20,
   ): Promise<PaginatedResult<Category>> {
     const { page: safePage, limit: safeLimit, skip } = normalizePagination(page, limit);
-    const where: any = { tenantId };
+    const where: Record<string, unknown> = { tenantId };
     if (type) {
       where.type = type;
     }
@@ -55,9 +75,20 @@ export class CategoryService {
     return category;
   }
 
-  async update(tenantId: string, id: string, updateCategoryDto: any): Promise<Category> {
+  async update(
+    tenantId: string,
+    id: string,
+    updateCategoryDto: UpdateCategoryDto,
+  ): Promise<Category> {
     const category = await this.findOne(tenantId, id);
-    this.categoryRepository.merge(category, updateCategoryDto);
+    const { name, ...rest } = updateCategoryDto;
+
+    if (name && name !== category.name) {
+      category.name = name;
+      category.slug = await this.resolveUniqueSlug(tenantId, name);
+    }
+
+    this.categoryRepository.merge(category, rest);
     return this.categoryRepository.save(category);
   }
 

@@ -13,12 +13,13 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-modulehub}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-modulehub}
       POSTGRES_DB: ${DB_DATABASE:-module_hub}
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - '${DB_PORT:-5432}:5432'
     volumes:
       - ../data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-modulehub} -d ${DB_DATABASE:-module_hub}']
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 5s
       timeout: 5s
       retries: 10

@@ -68,6 +68,8 @@ describe('AuthController (e2e)', () => {
     expect(Array.isArray(response.body.activeModules)).toBe(true);
     expect(Array.isArray(response.body.permissions)).toBe(true);
     expect(response.body.tenant).toBeDefined();
+    expect(typeof response.body.onboardingCompleted).toBe('boolean');
+    expect(typeof response.body.billableCount).toBe('number');
   });
 
   it('/auth/forgot-password (POST) accepts tenantId in body', async () => {

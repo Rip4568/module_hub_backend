@@ -3,6 +3,7 @@ export interface TenantConfig {
   locale?: string;
   currency?: string;
   features?: Record<string, boolean>;
+  onboardingCompleted?: boolean;
   [key: string]: unknown;
 }
 

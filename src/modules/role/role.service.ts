@@ -136,4 +136,12 @@ export class RoleService {
 
     await this.rolePermissionRepository.save(newGrants);
   }
+
+  async grantAllPermissions(roleId: string): Promise<void> {
+    const permissions = await this.permissionRepository.find({ select: ['id'] });
+    await this.grantPermissions(
+      roleId,
+      permissions.map((permission) => permission.id),
+    );
+  }
 }

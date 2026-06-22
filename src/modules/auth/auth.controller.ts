@@ -21,9 +21,11 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
 import { SkipBillingCheck } from '../../common/decorators/skip-billing-check.decorator';
+import { SkipOnboardingCheck } from '../../common/decorators/skip-onboarding-check.decorator';
 
 @ApiTags('Auth')
 @SkipBillingCheck()
+@SkipOnboardingCheck()
 @UseGuards(ThrottlerGuard)
 @Controller('auth')
 export class AuthController {
@@ -80,7 +82,8 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+    const user = await this.authService.register(registerDto);
+    return this.authService.login(user);
   }
 
   @Throttle({ default: { limit: 3, ttl: 60000 } })

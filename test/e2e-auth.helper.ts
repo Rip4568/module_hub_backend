@@ -31,7 +31,24 @@ export async function createE2EApp(): Promise<INestApplication> {
   return app;
 }
 
-export async function authenticateE2EUser(app: INestApplication): Promise<E2EAuthContext> {
+export async function completeE2EOnboarding(
+  app: INestApplication,
+  token: string,
+  tenantId: string,
+  moduleId = 'fleet_management',
+): Promise<void> {
+  await request(app.getHttpServer())
+    .post('/onboarding/complete')
+    .set('Authorization', `Bearer ${token}`)
+    .set('x-tenant-id', tenantId)
+    .send({ moduleId })
+    .expect(201);
+}
+
+export async function authenticateE2EUser(
+  app: INestApplication,
+  options?: { skipOnboarding?: boolean },
+): Promise<E2EAuthContext> {
   const uniqueSuffix = Date.now();
   const credentials = {
     email: `e2e_user_${uniqueSuffix}@test.com`,
@@ -45,7 +62,7 @@ export async function authenticateE2EUser(app: INestApplication): Promise<E2EAut
     .send(credentials)
     .expect(201);
 
-  const tenantId = registerResponse.body.tenantId as string;
+  const tenantId = (registerResponse.body.user?.tenantId ?? registerResponse.body.tenantId) as string;
 
   const loginResponse = await request(app.getHttpServer())
     .post('/auth/login')
@@ -58,6 +75,10 @@ export async function authenticateE2EUser(app: INestApplication): Promise<E2EAut
 
   const token = loginResponse.body.token as string;
   const refreshToken = loginResponse.body.refreshToken as string;
+
+  if (!options?.skipOnboarding) {
+    await completeE2EOnboarding(app, token, tenantId);
+  }
 
   TestHelper.saveEnv('test_tenantId', tenantId);
   TestHelper.saveEnv('test_token', token);

@@ -7,6 +7,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseConfigService } from './config/database.config';
 
 // Core Modules
+import { PlanModule } from './modules/plan/plan.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { TenantModuleModule } from './modules/tenant-module/tenant-module.module';
 import { UserModule } from './modules/user/user.module';
@@ -38,6 +40,7 @@ import { ClsModule, ClsMiddleware } from 'nestjs-cls';
 import { TenantContextMiddleware } from './common/middlewares/tenant-context.middleware';
 import { TenantSubscriber } from './common/subscribers/tenant.subscriber';
 import { BillingEnforcementGuard } from './common/guards/billing-enforcement.guard';
+import { OnboardingEnforcementGuard } from './common/guards/onboarding-enforcement.guard';
 
 @Module({
   imports: [
@@ -66,6 +69,8 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
 
     // Core
     TenantModule,
+    PlanModule,
+    OnboardingModule,
     TenantModuleModule,
     UserModule,
     AuthModule,
@@ -97,6 +102,10 @@ import { BillingEnforcementGuard } from './common/guards/billing-enforcement.gua
     {
       provide: APP_GUARD,
       useClass: BillingEnforcementGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: OnboardingEnforcementGuard,
     },
   ],
 })

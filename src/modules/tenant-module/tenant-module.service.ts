@@ -20,6 +20,11 @@ import { RoleName } from '../role/enums/role-name.enum';
 import { PaginatedResult } from '../../common/interfaces/paginated-result.interface';
 import { normalizePagination } from '../../common/utils/pagination.util';
 import { DomainEvents, ModuleActivatedPayload } from '../../common/events/domain.events';
+import {
+  countBillableActiveModules,
+  isEssentialModule,
+} from '../../common/constants/module-billing.constants';
+import { PlanService } from '../plan/plan.service';
 
 @Injectable()
 export class TenantModuleService {
@@ -33,6 +38,7 @@ export class TenantModuleService {
     private roleRepository: Repository<Role>,
     @Inject(forwardRef(() => RoleService))
     private roleService: RoleService,
+    private readonly planService: PlanService,
     private readonly eventEmitter: EventEmitter2,
     private readonly cls: ClsService,
   ) {}
@@ -58,7 +64,6 @@ export class TenantModuleService {
     documents: 'document',
     'activity-log': 'activity_log',
   };
-  private readonly MAX_MODULES_PER_PLAN = 5;
 
   private normalizeModuleId(moduleId: string): string {
     return this.MODULE_ALIASES[moduleId] ?? moduleId;
@@ -208,19 +213,28 @@ export class TenantModuleService {
   async activateModule(tenantId: string, moduleId: string): Promise<TenantModuleEntity> {
     const canonicalModuleId = this.normalizeModuleId(moduleId);
     const normalizedModules = await this.getNormalizedModules(tenantId);
-    const activeCount = normalizedModules.filter((module) => module.isActive).length;
+    const activeBillableIds = normalizedModules
+      .filter((module) => module.isActive)
+      .map((module) => this.normalizeModuleId(module.moduleId))
+      .filter((id) => !isEssentialModule(id));
+    const billableActiveCount = countBillableActiveModules(activeBillableIds);
+    const maxModules = await this.planService.getModuleLimitForTenant(tenantId);
+    const plan = await this.planService.getPlanForTenant(tenantId);
+    const planName = plan?.name ?? 'Starter';
 
-    if (activeCount >= this.MAX_MODULES_PER_PLAN) {
+    if (maxModules !== null && billableActiveCount >= maxModules) {
       const existing = await this.mergeLegacyRecords(tenantId, canonicalModuleId);
       if (!existing || !existing.isActive) {
         throw new HttpException(
           {
             statusCode: HttpStatus.PAYMENT_REQUIRED,
             code: 'PLAN_UPGRADE_REQUIRED',
-            message: `Your current plan allows up to ${this.MAX_MODULES_PER_PLAN} active modules. Upgrade your plan to activate additional modules.`,
+            message: `Seu plano ${planName} permite até ${maxModules} módulos ativos (excluindo módulos essenciais). Faça upgrade para ativar mais módulos.`,
             details: {
-              activeCount,
-              maxModules: this.MAX_MODULES_PER_PLAN,
+              billableActiveCount,
+              maxModules,
+              planId: plan?.id ?? 'starter',
+              planName,
             },
             suggestedAction: 'UPGRADE_PLAN',
           },
@@ -303,5 +317,25 @@ export class TenantModuleService {
       .filter((module) => module.isActive)
       .map((module) => this.normalizeModuleId(module.moduleId));
     return [...new Set([...this.ESSENTIAL_MODULES, ...dbModuleIds])];
+  }
+
+  getModuleUsage(activeModuleIds: string[], maxModules: number | null) {
+    const billableActiveCount = countBillableActiveModules(
+      activeModuleIds.map((id) => this.normalizeModuleId(id)),
+    );
+    return {
+      billableActiveCount,
+      maxModules,
+      isAtLimit: maxModules !== null && billableActiveCount >= maxModules,
+    };
+  }
+
+  async getModuleUsageForTenant(tenantId: string) {
+    const normalizedModules = await this.getNormalizedModules(tenantId);
+    const activeIds = normalizedModules
+      .filter((module) => module.isActive)
+      .map((module) => module.moduleId);
+    const maxModules = await this.planService.getModuleLimitForTenant(tenantId);
+    return this.getModuleUsage([...this.ESSENTIAL_MODULES, ...activeIds], maxModules);
   }
 }

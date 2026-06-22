@@ -9,8 +9,8 @@ import {
   Unique,
 } from 'typeorm';
 import { TenantAwareEntity } from '../../../common/entities/tenant-aware.entity';
-import { Tenant } from '../../tenant/entities/tenant.entity';
-import { ProductCategory } from '../../product/entities/product-category.entity';
+import type { Tenant } from '../../tenant/entities/tenant.entity';
+import type { ProductCategory } from '../../product/entities/product-category.entity';
 
 @Entity()
 @Unique(['tenantId', 'slug'])
@@ -18,7 +18,10 @@ export class Category extends TenantAwareEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Tenant, { onDelete: 'CASCADE' })
+  @ManyToOne(
+    () => require('../../tenant/entities/tenant.entity').Tenant,
+    { onDelete: 'CASCADE' },
+  )
   tenant: Tenant;
 
   @Column()
@@ -54,6 +57,9 @@ export class Category extends TenantAwareEntity {
   @Column({ nullable: true })
   type: string;
 
+  @Column({ nullable: true })
+  color: string;
+
   @Column({ default: true })
   isActive: boolean;
 
@@ -63,6 +69,9 @@ export class Category extends TenantAwareEntity {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => ProductCategory, (productCategory) => productCategory.category)
+  @OneToMany(
+    () => require('../../product/entities/product-category.entity').ProductCategory,
+    (productCategory: ProductCategory) => productCategory.category,
+  )
   products: ProductCategory[];
 }
