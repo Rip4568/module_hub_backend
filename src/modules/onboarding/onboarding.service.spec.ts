@@ -121,4 +121,33 @@ describe('OnboardingService', () => {
       service.complete('tenant-1', { moduleId: 'financial' }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  it('rejects skip when onboarding is already done', async () => {
+    tenantServiceMock.findOne.mockResolvedValue({
+      id: 'tenant-1',
+      config: { onboardingCompleted: true },
+    });
+
+    await expect(service.skip('tenant-1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('marks onboarding complete without activating a module', async () => {
+    tenantServiceMock.findOne.mockResolvedValue({
+      id: 'tenant-1',
+      config: { onboardingCompleted: false },
+    });
+    tenantServiceMock.updateConfig.mockResolvedValue({});
+    tenantModuleServiceMock.getActiveModules.mockResolvedValue(['erp', 'tenant']);
+
+    const result = await service.skip('tenant-1');
+
+    expect(tenantModuleServiceMock.activateModule).not.toHaveBeenCalled();
+    expect(tenantServiceMock.updateConfig).toHaveBeenCalledWith('tenant-1', 'tenant-1', {
+      config: { onboardingCompleted: true },
+    });
+    expect(result).toEqual({
+      onboardingCompleted: true,
+      activeModules: ['erp', 'tenant'],
+    });
+  });
 });

@@ -104,6 +104,28 @@ export class OnboardingService {
     };
   }
 
+  async skip(tenantId: string) {
+    const tenant = await this.tenantService.findOne(tenantId, tenantId);
+
+    if (tenant.config?.onboardingCompleted === true) {
+      throw new ConflictException({
+        code: 'ONBOARDING_ALREADY_COMPLETED',
+        message: 'O onboarding já foi concluído.',
+      });
+    }
+
+    await this.tenantService.updateConfig(tenantId, tenantId, {
+      config: { onboardingCompleted: true },
+    });
+
+    const activeModules = await this.tenantModuleService.getActiveModules(tenantId);
+
+    return {
+      onboardingCompleted: true,
+      activeModules,
+    };
+  }
+
   private resolveSelectedModuleIds(dto: CompleteOnboardingDto): string[] {
     if (dto.moduleIds?.length) {
       if (dto.moduleIds.length !== 1) {

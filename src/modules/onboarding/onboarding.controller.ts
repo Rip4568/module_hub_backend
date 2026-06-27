@@ -25,4 +25,9 @@ export class OnboardingController {
   complete(@CurrentTenant() tenantId: string, @Body() dto: CompleteOnboardingDto) {
     return this.onboardingService.complete(tenantId, dto);
   }
+
+  @Post('skip')
+  skip(@CurrentTenant() tenantId: string) {
+    return this.onboardingService.skip(tenantId);
+  }
 }
